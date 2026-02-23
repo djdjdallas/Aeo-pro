@@ -1,5 +1,6 @@
 import { ArrowRight, Check } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import CTAButton from "@/components/CTAButton";
 
 const plans = [
   {
@@ -11,6 +12,7 @@ const plans = [
       "20 citation submissions",
       "Monthly AI visibility report",
     ],
+    footnote: "Setup in 48 hours \u00B7 Cancel anytime",
   },
   {
     name: "Growth",
@@ -22,6 +24,7 @@ const plans = [
       "Content drops for top 10 queries",
       "Competitor gap analysis",
     ],
+    footnote: "Setup in 48 hours \u00B7 Cancel anytime \u00B7 Most popular",
   },
   {
     name: "Pro",
@@ -33,6 +36,7 @@ const plans = [
       "Review strategy + response management",
       "Bi-weekly strategy calls",
     ],
+    footnote: "Setup in 48 hours \u00B7 Dedicated onboarding call",
   },
 ];
 
@@ -43,10 +47,18 @@ export default function Pricing() {
         <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-center mb-4 tracking-tight">
           Simple, transparent pricing
         </h2>
-        <p className="text-gray-400 text-center mb-16 max-w-xl mx-auto">
+        <p className="text-gray-400 text-center mb-8 max-w-xl mx-auto">
           Every plan includes our core AEO methodology. Pick the level
           of intensity that matches your goals.
         </p>
+
+        {/* Scarcity / founding member line */}
+        <div className="text-center mb-16">
+          <span className="inline-block text-sm text-blue-400 border border-blue-500/20 bg-blue-500/5 rounded-lg py-3 px-6">
+            Founding member pricing — locked in for life when you start today.
+            Price increases when all 10 spots are filled.
+          </span>
+        </div>
 
         <div className="grid md:grid-cols-3 gap-6 items-stretch">
           {plans.map((plan) => (
@@ -89,8 +101,8 @@ export default function Pricing() {
                 ))}
               </ul>
 
-              <a
-                href="#cta"
+              <CTAButton
+                plan={plan.name}
                 className={`cta-glow w-full inline-flex items-center justify-center gap-2 font-medium py-3 rounded-xl transition-all text-sm ${
                   plan.popular
                     ? "bg-[#3b82f6] hover:bg-[#2563eb] text-white"
@@ -99,7 +111,12 @@ export default function Pricing() {
               >
                 Get Started
                 <ArrowRight size={16} />
-              </a>
+              </CTAButton>
+
+              {/* Footnote under CTA */}
+              <p className="text-xs text-gray-500 text-center mt-3">
+                {plan.footnote}
+              </p>
             </div>
           ))}
         </div>

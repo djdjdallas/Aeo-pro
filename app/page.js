@@ -3,6 +3,7 @@ import Hero from "@/components/sections/Hero";
 import SocialProof from "@/components/sections/SocialProof";
 import Problem from "@/components/sections/Problem";
 import HowItWorks from "@/components/sections/HowItWorks";
+import ResultsSnapshot from "@/components/sections/ResultsSnapshot";
 import Timeline from "@/components/sections/Timeline";
 import WhoItsFor from "@/components/sections/WhoItsFor";
 import Pricing from "@/components/sections/Pricing";
@@ -19,6 +20,7 @@ export default function Home() {
         <SocialProof />
         <Problem />
         <HowItWorks />
+        <ResultsSnapshot />
         <Timeline />
         <WhoItsFor />
         <Pricing />

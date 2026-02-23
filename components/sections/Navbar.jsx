@@ -2,10 +2,12 @@
 
 import { useState, useEffect } from "react";
 import { Menu, X } from "lucide-react";
+import { useAuditModal } from "@/components/AuditModalContext";
 
 export default function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const { openModal } = useAuditModal();
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 20);
@@ -44,12 +46,12 @@ export default function Navbar() {
               {link.label}
             </a>
           ))}
-          <a
-            href="#cta"
+          <button
+            onClick={() => openModal()}
             className="cta-glow bg-[#3b82f6] hover:bg-[#2563eb] text-white text-sm font-medium px-5 py-2 rounded-lg transition-all"
           >
             Get Free Audit
-          </a>
+          </button>
         </div>
 
         {/* Mobile hamburger */}
@@ -75,13 +77,15 @@ export default function Navbar() {
               {link.label}
             </a>
           ))}
-          <a
-            href="#cta"
+          <button
             className="cta-glow inline-block mt-2 bg-[#3b82f6] hover:bg-[#2563eb] text-white text-sm font-medium px-5 py-2 rounded-lg transition-all"
-            onClick={() => setMobileOpen(false)}
+            onClick={() => {
+              setMobileOpen(false);
+              openModal();
+            }}
           >
             Get Free Audit
-          </a>
+          </button>
         </div>
       )}
     </nav>

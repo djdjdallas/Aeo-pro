@@ -1,4 +1,11 @@
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, CalendarDays, Search, BarChart3 } from "lucide-react";
+import CTAButton from "@/components/CTAButton";
+
+const steps = [
+  { icon: CalendarDays, label: "Book Free Audit" },
+  { icon: Search, label: "We Run Your AI Report" },
+  { icon: BarChart3, label: "You See Your Gaps" },
+];
 
 export default function FinalCTA() {
   return (
@@ -22,13 +29,30 @@ export default function FinalCTA() {
               where you stand, what competitors are doing, and what it takes to
               get mentioned first.
             </p>
-            <a
-              href="#"
-              className="cta-glow inline-flex items-center gap-2 bg-[#3b82f6] hover:bg-[#2563eb] text-white font-semibold px-8 py-4 rounded-xl text-base sm:text-lg transition-all"
-            >
+
+            {/* 3-step process strip */}
+            <div className="flex items-center justify-center gap-4 sm:gap-6 mb-10">
+              {steps.map((step, i) => (
+                <div key={step.label} className="flex items-center gap-4 sm:gap-6">
+                  <div className="flex flex-col items-center gap-2">
+                    <div className="w-10 h-10 rounded-full bg-[#1f1f1f] border border-[#2a2a2a] flex items-center justify-center">
+                      <step.icon size={18} className="text-gray-400" />
+                    </div>
+                    <span className="text-xs sm:text-sm text-gray-400 text-center max-w-[100px]">
+                      {step.label}
+                    </span>
+                  </div>
+                  {i < steps.length - 1 && (
+                    <ArrowRight size={16} className="text-gray-600 -mt-6 shrink-0" />
+                  )}
+                </div>
+              ))}
+            </div>
+
+            <CTAButton className="cta-glow inline-flex items-center gap-2 bg-[#3b82f6] hover:bg-[#2563eb] text-white font-semibold px-8 py-4 rounded-xl text-base sm:text-lg transition-all">
               Get My Free Audit
               <ArrowRight size={18} />
-            </a>
+            </CTAButton>
             <p className="text-sm text-gray-500 mt-5">
               No commitment. No sales pressure. Just data.
             </p>
