@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import { createServerClient } from "@/lib/supabase";
 import AdminLeadsTable from "@/components/AdminLeadsTable";
 
@@ -36,12 +37,20 @@ export default async function AdminPage({ searchParams }) {
               {leads?.length || 0} total leads
             </p>
           </div>
-          <a
-            href="/"
-            className="text-sm text-gray-400 hover:text-white transition-colors"
-          >
-            Back to site
-          </a>
+          <div className="flex items-center gap-4">
+            <Link
+              href={`/admin/tracker?key=${key}`}
+              className="text-sm text-[#3b82f6] hover:text-blue-300 transition-colors"
+            >
+              AI Tracker &rarr;
+            </Link>
+            <a
+              href="/"
+              className="text-sm text-gray-400 hover:text-white transition-colors"
+            >
+              Back to site
+            </a>
+          </div>
         </div>
         <AdminLeadsTable leads={leads || []} adminKey={key} />
       </div>
