@@ -276,23 +276,34 @@ Return ONLY a valid JSON object. No markdown, no explanation outside the JSON. U
 
       const responseText = message.content[0].text;
 
-      // Try to parse JSON from response
-      try {
-        auditResult = JSON.parse(responseText);
-      } catch {
-        // Try to extract JSON from markdown code blocks
-        const jsonMatch = responseText.match(/```(?:json)?\s*([\s\S]*?)```/);
-        if (jsonMatch) {
-          auditResult = JSON.parse(jsonMatch[1].trim());
-        } else {
-          // Try to find JSON object in response
-          const objectMatch = responseText.match(/\{[\s\S]*\}/);
-          if (objectMatch) {
-            auditResult = JSON.parse(objectMatch[0]);
-          } else {
-            throw new Error("Could not parse Claude response as JSON");
-          }
+      // Extract the JSON string from the response
+      let jsonStr = responseText.trim();
+
+      // Strip markdown code fences if present
+      const fenceMatch = jsonStr.match(/```(?:json)?\s*([\s\S]*?)```/);
+      if (fenceMatch) {
+        jsonStr = fenceMatch[1].trim();
+      } else {
+        // Extract outermost JSON object
+        const objMatch = jsonStr.match(/\{[\s\S]*\}/);
+        if (objMatch) {
+          jsonStr = objMatch[0];
         }
+      }
+
+      // Sanitize common LLM JSON issues before parsing
+      // 1. Remove trailing commas before ] or }
+      jsonStr = jsonStr.replace(/,\s*([}\]])/g, "$1");
+      // 2. Replace smart/curly quotes with straight quotes
+      jsonStr = jsonStr.replace(/[\u201C\u201D\u201E\u201F\u2033\u2036]/g, '"');
+      jsonStr = jsonStr.replace(/[\u2018\u2019\u201A\u201B\u2032\u2035]/g, "'");
+      // 3. Remove control characters (except newline/tab within strings)
+      jsonStr = jsonStr.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, "");
+
+      try {
+        auditResult = JSON.parse(jsonStr);
+      } catch {
+        throw new Error("Could not parse Claude response as JSON");
       }
     } catch (claudeError) {
       console.error("Claude API error:", claudeError);
