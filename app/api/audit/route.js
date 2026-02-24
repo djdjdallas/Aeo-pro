@@ -194,85 +194,47 @@ export async function POST(request) {
       const extractedData = siteData;
       const message = await anthropic.messages.create({
         model: "claude-sonnet-4-6",
-        max_tokens: 2000,
+        max_tokens: 4096,
         messages: [
           {
             role: "user",
-            content: `You are an AEO (Answer Engine Optimization) expert auditing a local business website for visibility in ChatGPT, Perplexity, Google AI Overviews, and Claude AI.
+            content: `You are an AEO (Answer Engine Optimization) expert. Audit this local business website for AI search visibility.
 
-CRITICAL INSTRUCTION: Prioritize "Information Gain" in your analysis — identify any unique facts, local expertise, proprietary data, or specific credentials mentioned on the site that competitors likely lack. This is a primary driver for AI citations and should be highlighted wherever found.
-
-Here is the extracted website data:
+Website data:
 ${JSON.stringify(extractedData, null, 2)}
 
-SCORING RULES:
-- If data for a category is insufficient to score accurately, set status to "insufficient_data" and explain what's missing
-- Never guess at off-page signals (citations, reviews) if not present in the extracted data — flag them as unverifiable
-- Be specific — reference actual content found, not generic advice
+RULES:
+- Keep each "finding" and "fix" to 1-2 sentences max
+- If data is insufficient, use status "insufficient_data"
+- Be specific — reference actual content found
+- Return ONLY valid JSON, no markdown fences, no text outside the JSON
 
-Return ONLY a valid JSON object. No markdown, no explanation outside the JSON. Use this exact structure:
-
+JSON structure:
 {
-  "overall_score": <number 0-100>,
-  "business_name": "<from title or schema, or 'Unknown'>",
-  "information_gain_signals": [
-    "<any unique facts, credentials, or proprietary data found>"
-  ],
+  "overall_score": <0-100>,
+  "business_name": "<from title/schema or 'Unknown'>",
+  "information_gain_signals": ["<unique facts or credentials found>"],
   "categories": [
-    {
-      "name": "Schema Markup",
-      "score": <number 0-100>,
-      "status": "<critical|warning|good|insufficient_data>",
-      "finding": "<reference actual schema types found or confirm none exist. Check specifically for LocalBusiness, FAQPage, Service, and Review schema>",
-      "fix": "<specific schema types to add with example>"
-    },
-    {
-      "name": "AI Readability",
-      "score": <number 0-100>,
-      "status": "<critical|warning|good|insufficient_data>",
-      "finding": "<analyze H-tag hierarchy, semantic keyword proximity, bullet point usage, and whether content follows an Answer Capsule format — clear questions followed by 40-60 word direct answers>",
-      "fix": "<specific structural changes needed>"
-    },
-    {
-      "name": "Citation Signals",
-      "score": <number 0-100>,
-      "status": "<critical|warning|good|insufficient_data>",
-      "finding": "<reference only citation signals present in the extracted data such as links to Yelp, BBB, Angi, Google Maps. If no off-page data available, flag as insufficient_data>",
-      "fix": "<specific directories to target, note that Perplexity has a direct data partnership with Yelp making it non-negotiable>"
-    },
-    {
-      "name": "FAQ & Q&A Content",
-      "score": <number 0-100>,
-      "status": "<critical|warning|good|insufficient_data>",
-      "finding": "<reference whether FAQ sections were detected, whether questions match conversational AI query patterns, and whether FAQPage schema exists>",
-      "fix": "<specific question topics to add based on their industry>"
-    },
-    {
-      "name": "Local Authority",
-      "score": <number 0-100>,
-      "status": "<critical|warning|good|insufficient_data>",
-      "finding": "<reference NAP consistency signals, geographic keywords in headings, service area pages, and any location-specific data found>",
-      "fix": "<specific local entity signals to add>"
-    },
-    {
-      "name": "Review Signals",
-      "score": <number 0-100>,
-      "status": "<critical|warning|good|insufficient_data>",
-      "finding": "<reference review sections, star ratings, review counts, or testimonials found in HTML. Note that AI models analyze sentiment polarity across Yelp, Birdeye, and Reddit>",
-      "fix": "<specific review strategy recommendation>"
-    }
+    {"name": "Schema Markup", "score": <0-100>, "status": "<critical|warning|good|insufficient_data>", "finding": "<1-2 sentences>", "fix": "<1-2 sentences>"},
+    {"name": "AI Readability", "score": <0-100>, "status": "<status>", "finding": "<1-2 sentences>", "fix": "<1-2 sentences>"},
+    {"name": "Citation Signals", "score": <0-100>, "status": "<status>", "finding": "<1-2 sentences>", "fix": "<1-2 sentences>"},
+    {"name": "FAQ & Q&A Content", "score": <0-100>, "status": "<status>", "finding": "<1-2 sentences>", "fix": "<1-2 sentences>"},
+    {"name": "Local Authority", "score": <0-100>, "status": "<status>", "finding": "<1-2 sentences>", "fix": "<1-2 sentences>"},
+    {"name": "Review Signals", "score": <0-100>, "status": "<status>", "finding": "<1-2 sentences>", "fix": "<1-2 sentences>"}
   ],
-  "top_3_priorities": [
-    "<highest ROI fix with estimated impact>",
-    "<second priority>",
-    "<third priority>"
-  ],
-  "ai_visibility_prediction": "<1 paragraph on how ChatGPT, Perplexity, and Google AI Overviews currently perceive this business based on signals found>",
-  "information_gain_opportunity": "<1 paragraph identifying what unique local data or expertise this business could publish to become the most cited source in their category>"
+  "top_3_priorities": ["<priority 1>", "<priority 2>", "<priority 3>"],
+  "ai_visibility_prediction": "<1 short paragraph>",
+  "information_gain_opportunity": "<1 short paragraph>"
 }`,
           },
         ],
       });
+
+      // Check if the response was truncated
+      if (message.stop_reason === "max_tokens") {
+        console.error("Claude response truncated — hit max_tokens");
+        throw new Error("AI response was truncated");
+      }
 
       const responseText = message.content[0].text;
 
@@ -291,18 +253,16 @@ Return ONLY a valid JSON object. No markdown, no explanation outside the JSON. U
         }
       }
 
-      // Sanitize common LLM JSON issues before parsing
-      // 1. Remove trailing commas before ] or }
+      // Sanitize common LLM JSON issues
       jsonStr = jsonStr.replace(/,\s*([}\]])/g, "$1");
-      // 2. Replace smart/curly quotes with straight quotes
       jsonStr = jsonStr.replace(/[\u201C\u201D\u201E\u201F\u2033\u2036]/g, '"');
       jsonStr = jsonStr.replace(/[\u2018\u2019\u201A\u201B\u2032\u2035]/g, "'");
-      // 3. Remove control characters (except newline/tab within strings)
       jsonStr = jsonStr.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, "");
 
       try {
         auditResult = JSON.parse(jsonStr);
-      } catch {
+      } catch (parseErr) {
+        console.error("JSON parse failed. Raw response:", responseText.slice(0, 500));
         throw new Error("Could not parse Claude response as JSON");
       }
     } catch (claudeError) {
