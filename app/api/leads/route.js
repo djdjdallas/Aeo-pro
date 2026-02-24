@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase";
+import { sendUserConfirmation, sendAdminNotification } from "@/lib/email";
 
 /*
   SQL schema — run this in Supabase SQL Editor to create the leads table:
@@ -67,6 +68,29 @@ export async function POST(request) {
       console.error("Supabase insert error:", error);
       return NextResponse.json({ error: "Failed to save lead" }, { status: 500 });
     }
+
+    // Send emails in the background — don't block the response
+    const emailData = {
+      contactName: body.contact_name.trim(),
+      email: body.email.trim().toLowerCase(),
+      phone: body.phone?.trim() || null,
+      businessName: body.business_name.trim(),
+      businessType: body.business_type.trim(),
+      location: body.location.trim(),
+      marketingSpend: body.marketing_spend.trim(),
+      plan: body.plan || null,
+    };
+
+    Promise.allSettled([
+      sendUserConfirmation(emailData),
+      sendAdminNotification(emailData),
+    ]).then((results) => {
+      results.forEach((r, i) => {
+        if (r.status === "rejected") {
+          console.error(`Email ${i} failed:`, r.reason);
+        }
+      });
+    });
 
     return NextResponse.json({ success: true, id: data.id });
   } catch (err) {
