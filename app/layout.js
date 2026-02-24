@@ -1,5 +1,9 @@
 import "./globals.css";
 import Providers from "@/components/Providers";
+import {
+  generateOrganizationJsonLd,
+  generateWebSiteJsonLd,
+} from "@/lib/seo";
 
 export const metadata = {
   title: {
@@ -42,6 +46,18 @@ export default function RootLayout({ children }) {
   return (
     <html lang="en">
       <body className="antialiased">
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify(generateOrganizationJsonLd()),
+          }}
+        />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify(generateWebSiteJsonLd()),
+          }}
+        />
         <Providers>{children}</Providers>
       </body>
     </html>

@@ -2,7 +2,11 @@ import Navbar from "@/components/sections/Navbar";
 import Footer from "@/components/sections/Footer";
 import CategoryFilter from "@/components/blog/CategoryFilter";
 import { getAllPosts } from "@/content";
-import { generatePageMetadata } from "@/lib/seo";
+import {
+  generatePageMetadata,
+  generateBlogListingJsonLd,
+  generateBreadcrumbJsonLd,
+} from "@/lib/seo";
 
 export const metadata = generatePageMetadata({
   title: "Blog — Answer Engine Optimization Insights",
@@ -15,8 +19,22 @@ export const metadata = generatePageMetadata({
 export default function BlogListingPage() {
   const posts = getAllPosts();
 
+  const blogListingJsonLd = generateBlogListingJsonLd(posts);
+  const breadcrumbJsonLd = generateBreadcrumbJsonLd([
+    { name: "Home", url: "/" },
+    { name: "Blog" },
+  ]);
+
   return (
     <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(blogListingJsonLd) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
+      />
       <Navbar />
       <main className="pt-28 pb-20">
         <div className="max-w-6xl mx-auto px-4 sm:px-6">
