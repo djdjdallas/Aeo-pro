@@ -3,6 +3,10 @@
     {
       "path": "/api/tracker/run?key=YOUR_ADMIN_KEY_HERE",
       "schedule": "0 8 * * *"
+    },
+    {
+      "path": "/api/tracker/send-report?key=YOUR_ADMIN_KEY_HERE",
+      "schedule": "0 9 1 * *"
     }
   ]
 }

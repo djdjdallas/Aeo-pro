@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { createServerClient } from "@/lib/supabase";
+import SendReportButton from "@/components/tracker/SendReportButton";
 
 export const metadata = {
   title: "AI Mention Tracker — Admin",
@@ -76,6 +77,7 @@ export default async function TrackerAdminPage({ searchParams }) {
             >
               &larr; Back to leads
             </Link>
+            <SendReportButton adminKey={key} />
             <Link
               href={`/admin/tracker/new?key=${key}`}
               className="bg-[#3b82f6] hover:bg-[#2563eb] text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
