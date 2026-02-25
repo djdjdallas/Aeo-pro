@@ -1,10 +1,10 @@
 import { Star } from "lucide-react";
 
 const stats = [
-  { value: "30-60 Days", label: "To First AI Mention", highlight: false },
-  { value: "3 of 10", label: "Founding Spots Left", highlight: true },
-  { value: "$500+", label: "Avg Job Value for Our Clients", highlight: false },
-  { value: "100%", label: "Audit Success Rate", highlight: false },
+  { value: "5B+", label: "Monthly ChatGPT Visits", highlight: false },
+  { value: "4.4x", label: "Higher Conversion from AI Traffic", highlight: true },
+  { value: "11.2%", label: "Conversion Rate for AI-Recommended Businesses", highlight: false },
+  { value: "<1%", label: "Of Local Businesses Optimized for AI", highlight: true },
 ];
 
 export default function SocialProof() {
@@ -16,7 +16,7 @@ export default function SocialProof() {
           {stats.map((stat) => (
             <div key={stat.label} className="text-center lg:px-8">
               <p
-                className={`text-3xl font-bold ${
+                className={`text-4xl sm:text-5xl font-bold ${
                   stat.highlight ? "text-[#3b82f6]" : "text-white"
                 }`}
               >

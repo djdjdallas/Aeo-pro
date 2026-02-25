@@ -60,6 +60,31 @@ export default function ResultsSnapshot() {
           Real AI responses recommending our clients by name.
         </p>
 
+        {/* Opportunity stats banner */}
+        <div className="mb-16">
+          <h3 className="text-2xl sm:text-3xl font-bold text-center mb-8 tracking-tight">
+            The AI Search Revolution Is Already Here
+          </h3>
+          <div className="grid sm:grid-cols-2 gap-6 max-w-3xl mx-auto">
+            <div className="bg-[#111111] border border-[#1a2a4a] rounded-2xl p-6 text-center">
+              <p className="text-3xl sm:text-4xl font-bold text-[#3b82f6]">
+                11.2% <span className="text-gray-500 text-xl">vs</span> 2.8%
+              </p>
+              <p className="text-sm text-gray-400 mt-2">
+                AI-recommended businesses convert at 4x the rate of traditional Google search results.
+              </p>
+            </div>
+            <div className="bg-[#111111] border border-[#1a2a4a] rounded-2xl p-6 text-center">
+              <p className="text-3xl sm:text-4xl font-bold text-[#3b82f6]">
+                &lt;1%
+              </p>
+              <p className="text-sm text-gray-400 mt-2">
+                of local businesses are optimized for AI search — the first-mover advantage is massive.
+              </p>
+            </div>
+          </div>
+        </div>
+
         <div className="grid md:grid-cols-3 gap-6">
           {results.map((card) => (
             <div
