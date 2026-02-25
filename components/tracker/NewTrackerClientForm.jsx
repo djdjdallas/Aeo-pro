@@ -1,12 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 
-export default function NewTrackerClientForm() {
-  const searchParams = useSearchParams();
-  const key = searchParams.get("key");
+export default function NewTrackerClientForm({ adminKey }) {
+  const key = adminKey;
   const router = useRouter();
 
   const [form, setForm] = useState({
