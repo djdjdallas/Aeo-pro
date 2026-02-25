@@ -1,6 +1,9 @@
 import Link from "next/link";
 import { createServerClient } from "@/lib/supabase";
 import SendReportButton from "@/components/tracker/SendReportButton";
+import DeleteTrackerClientButton from "@/components/tracker/DeleteTrackerClientButton";
+
+export const dynamic = "force-dynamic";
 
 export const metadata = {
   title: "AI Mention Tracker — Admin",
@@ -137,6 +140,7 @@ export default async function TrackerAdminPage() {
                 >
                   View
                 </Link>
+                <DeleteTrackerClientButton clientId={client.id} businessName={client.business_name} />
               </div>
             </div>
           ))}

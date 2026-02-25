@@ -4,6 +4,8 @@ import { createServerClient } from "@/lib/supabase";
 import TrackerClientActions from "@/components/tracker/TrackerClientActions";
 import TrackerResultsTable from "@/components/tracker/TrackerResultsTable";
 
+export const dynamic = "force-dynamic";
+
 export const metadata = {
   title: "Client Tracker — Admin",
   robots: "noindex, nofollow",
