@@ -4,7 +4,7 @@ export default function Footer() {
   return (
     <footer className="border-t border-[#1f1f1f] py-12">
       <div className="max-w-6xl mx-auto px-4 sm:px-6">
-        <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-5">
           {/* Brand */}
           <div>
             <Link href="/" className="text-lg font-bold text-white tracking-tight">
@@ -13,6 +13,19 @@ export default function Footer() {
             <p className="mt-2 text-sm text-gray-500">
               Get your business recommended by AI search engines.
             </p>
+          </div>
+
+          {/* NAP — Name, Address, Phone: critical trust signal for AI models */}
+          <div>
+            <p className="text-sm font-semibold text-gray-400 mb-3">Contact</p>
+            <address className="not-italic flex flex-col gap-1">
+              <span className="text-sm text-gray-500">First Answer</span>
+              <span className="text-sm text-gray-500">Las Vegas, NV, United States</span>
+              <a href="mailto:hello@firstanswer.co" className="text-sm text-gray-500 hover:text-gray-300 transition-colors">
+                hello@firstanswer.co
+              </a>
+            </address>
+            <p className="mt-3 text-xs text-gray-600">Serving local businesses across the United States</p>
           </div>
 
           {/* Product */}

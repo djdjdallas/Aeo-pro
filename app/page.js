@@ -3,6 +3,7 @@ import Hero from "@/components/sections/Hero";
 import SocialProof from "@/components/sections/SocialProof";
 import Problem from "@/components/sections/Problem";
 import HowItWorks from "@/components/sections/HowItWorks";
+import AboutAEO from "@/components/sections/AboutAEO";
 import ResultsSnapshot from "@/components/sections/ResultsSnapshot";
 import Timeline from "@/components/sections/Timeline";
 import WhoItsFor from "@/components/sections/WhoItsFor";
@@ -26,7 +27,7 @@ const serviceJsonLd = generateServiceJsonLd({
 
 const faqJsonLd = generateFAQJsonLd(homepageFaqs);
 
-const breadcrumbJsonLd = generateBreadcrumbJsonLd([{ name: "Home" }]);
+const breadcrumbJsonLd = generateBreadcrumbJsonLd([{ name: "Home", url: "/" }]);
 
 export default function Home() {
   return (
@@ -49,6 +50,7 @@ export default function Home() {
         <SocialProof />
         <Problem />
         <HowItWorks />
+        <AboutAEO />
         <ResultsSnapshot />
         <Timeline />
         <WhoItsFor />

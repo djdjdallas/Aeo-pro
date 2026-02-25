@@ -16,6 +16,24 @@ export default function FAQ() {
           Frequently asked questions
         </h2>
 
+        {/*
+          Hidden crawlable FAQ content for AI and search engine crawlers.
+          Visually hidden but present in the DOM for semantic extraction.
+          This ensures AI models can read the full Q&A even if the accordion
+          is collapsed on page load.
+        */}
+        <div className="sr-only" aria-hidden="false" itemScope itemType="https://schema.org/FAQPage">
+          {faqs.map((faq, idx) => (
+            <div key={idx} itemScope itemProp="mainEntity" itemType="https://schema.org/Question">
+              <h3 itemProp="name">{faq.question}</h3>
+              <div itemScope itemProp="acceptedAnswer" itemType="https://schema.org/Answer">
+                <p itemProp="text">{faq.answer}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Interactive accordion for visitors */}
         <Accordion type="single" collapsible className="w-full">
           {faqs.map((faq, idx) => (
             <AccordionItem key={idx} value={`item-${idx}`}>
