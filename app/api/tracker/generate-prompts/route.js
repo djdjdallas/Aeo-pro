@@ -10,11 +10,11 @@ export async function POST(request) {
 
   try {
     const body = await request.json();
-    const { business_name, business_type, location, target_url, lead_id } = body;
+    const { business_name, business_type, location, target_url, lead_id, differentiators } = body;
 
-    if (!business_name || !business_type || !location) {
+    if (!business_name || !business_type) {
       return NextResponse.json(
-        { error: "business_name, business_type, and location are required" },
+        { error: "business_name and business_type are required" },
         { status: 400 }
       );
     }
@@ -31,7 +31,7 @@ export async function POST(request) {
     if (clientError) throw clientError;
 
     // Generate prompts with Claude
-    const prompts = await generatePromptsForClient(business_type, location);
+    const prompts = await generatePromptsForClient(business_type, location || "", business_name, differentiators || "");
 
     // Bulk insert prompts
     const promptRows = prompts.map((p) => ({

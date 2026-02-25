@@ -12,6 +12,7 @@ export default function NewTrackerClientForm() {
     business_type: "",
     location: "",
     target_url: "",
+    differentiators: "",
   });
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
@@ -97,11 +98,10 @@ export default function NewTrackerClientForm() {
 
             <div>
               <label className="text-xs text-gray-500 uppercase tracking-wider block mb-1.5">
-                Location *
+                Location <span className="text-gray-600">(optional for SaaS/agencies)</span>
               </label>
               <input
                 type="text"
-                required
                 placeholder="Las Vegas, NV"
                 value={form.location}
                 onChange={(e) => setForm({ ...form, location: e.target.value })}
@@ -122,6 +122,22 @@ export default function NewTrackerClientForm() {
               />
               <p className="text-xs text-gray-600 mt-1">
                 Used to detect URL/domain citations in AI responses
+              </p>
+            </div>
+
+            <div>
+              <label className="text-xs text-gray-500 uppercase tracking-wider block mb-1.5">
+                Key Differentiators <span className="text-gray-600">(optional)</span>
+              </label>
+              <textarea
+                rows={2}
+                placeholder="voice DNA matching, retention optimization, PVSS framework"
+                value={form.differentiators}
+                onChange={(e) => setForm({ ...form, differentiators: e.target.value })}
+                className="w-full bg-[#0a0a0a] border border-[#1f1f1f] text-white rounded-lg px-3 py-2.5 text-sm placeholder:text-gray-600 focus:outline-none focus:border-[#3b82f6] transition-colors resize-none"
+              />
+              <p className="text-xs text-gray-600 mt-1">
+                What makes this business unique? Helps generate more targeted prompts.
               </p>
             </div>
           </div>
@@ -180,7 +196,7 @@ export default function NewTrackerClientForm() {
               View Client Dashboard
             </Link>
             <button
-              onClick={() => { setResult(null); setForm({ business_name: "", business_type: "", location: "", target_url: "" }); }}
+              onClick={() => { setResult(null); setForm({ business_name: "", business_type: "", location: "", target_url: "", differentiators: "" }); }}
               className="bg-[#1f1f1f] hover:bg-[#2a2a2a] text-gray-300 font-medium py-3 px-5 rounded-lg transition-colors text-sm"
             >
               Add Another
