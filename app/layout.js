@@ -7,8 +7,8 @@ import {
 
 export const metadata = {
   title: {
-    default: "First Answer — Get Recommended by AI",
-    template: "%s | First Answer",
+    default: "First Answer — AEO for Local Businesses",
+    template: "%s | First Answer — AEO for Local Businesses",
   },
   description:
     "Answer Engine Optimization for local businesses. Get your business recommended by ChatGPT, Perplexity, and every AI assistant your customers use.",
@@ -19,20 +19,20 @@ export const metadata = {
     "ChatGPT recommendations",
     "local business AI",
   ],
-  authors: [{ name: "First Answer" }],
+  authors: [{ name: "First Answer — AEO for Local Businesses" }],
   metadataBase: new URL("https://firstanswer.co"),
   openGraph: {
-    title: "First Answer — Get Recommended by AI",
+    title: "First Answer — AEO for Local Businesses",
     description:
       "Answer Engine Optimization for local businesses. Get recommended by ChatGPT, Perplexity, and AI search engines.",
     url: "https://firstanswer.co",
-    siteName: "First Answer",
+    siteName: "First Answer — AEO for Local Businesses",
     type: "website",
     locale: "en_US",
   },
   twitter: {
     card: "summary_large_image",
-    title: "First Answer — Get Recommended by AI",
+    title: "First Answer — AEO for Local Businesses",
     description:
       "Answer Engine Optimization for local businesses. Get recommended by ChatGPT, Perplexity, and AI search engines.",
   },
