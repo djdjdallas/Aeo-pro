@@ -118,7 +118,7 @@ export default async function TrackerClientPage({ params }) {
       </div>
 
       {/* Results table */}
-      <TrackerResultsTable results={results || []} />
+      <TrackerResultsTable results={results || []} clientName={client.business_name} />
     </div>
   );
 }

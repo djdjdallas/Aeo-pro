@@ -9,8 +9,43 @@ function formatDateTime(dateStr) {
   });
 }
 
-export default function TrackerResultsTable({ results }) {
+function escapeCsv(value) {
+  if (value == null) return "";
+  const str = String(value).replace(/\n/g, " ").replace(/\r/g, "");
+  if (str.includes(",") || str.includes('"') || str.includes("\n")) {
+    return `"${str.replace(/"/g, '""')}"`;
+  }
+  return str;
+}
+
+export default function TrackerResultsTable({ results, clientName }) {
   const [expandedId, setExpandedId] = useState(null);
+
+  function handleExportCSV() {
+    const headers = ["Prompt", "AI Model", "Mentioned", "Mention Rank", "Checked At", "Response Snippet", "Full Response"];
+    const rows = results.map((r) => [
+      escapeCsv(r.tracked_prompts?.prompt),
+      escapeCsv(r.ai_model),
+      r.was_mentioned ? "Yes" : "No",
+      escapeCsv(r.mention_rank || ""),
+      escapeCsv(r.checked_at),
+      escapeCsv(r.response_snippet),
+      escapeCsv(r.full_response),
+    ]);
+
+    const csv = [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+
+    const slug = (clientName || "tracker-results").toLowerCase().replace(/\s+/g, "-");
+    const date = new Date().toISOString().split("T")[0];
+
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${slug}-ai-results-${date}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
 
   if (!results.length) {
     return (
@@ -22,9 +57,17 @@ export default function TrackerResultsTable({ results }) {
 
   return (
     <div>
-      <p className="text-xs text-gray-500 uppercase tracking-wider mb-3">
-        Check History ({results.length} results)
-      </p>
+      <div className="flex items-center justify-between mb-3">
+        <p className="text-xs text-gray-500 uppercase tracking-wider">
+          Check History ({results.length} results)
+        </p>
+        <button
+          onClick={handleExportCSV}
+          className="text-xs bg-[#1f1f1f] hover:bg-[#2a2a2a] text-gray-300 px-3 py-1.5 rounded-lg transition-colors border border-[#2a2a2a]"
+        >
+          Export CSV
+        </button>
+      </div>
 
       <div className="space-y-2">
         {/* Header */}
