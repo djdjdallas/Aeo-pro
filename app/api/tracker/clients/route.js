@@ -1,11 +1,9 @@
 import { NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase";
+import { isAdminAuthed } from "@/lib/admin-auth";
 
 export async function GET(request) {
-  const { searchParams } = new URL(request.url);
-  const key = searchParams.get("key");
-
-  if (!key || key !== process.env.ADMIN_KEY) {
+  if (!isAdminAuthed(request)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

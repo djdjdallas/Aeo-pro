@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
-export default function TrackerClientActions({ clientId, adminKey }) {
+export default function TrackerClientActions({ clientId }) {
   const [running, setRunning] = useState(false);
   const [message, setMessage] = useState(null);
   const router = useRouter();
@@ -13,7 +13,7 @@ export default function TrackerClientActions({ clientId, adminKey }) {
     setMessage(null);
 
     try {
-      const res = await fetch(`/api/tracker/run?key=${adminKey}`, {
+      const res = await fetch("/api/tracker/run", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ client_id: clientId }),
@@ -27,7 +27,6 @@ export default function TrackerClientActions({ clientId, adminKey }) {
         `Run complete — ${summary?.mentioned || 0} of ${summary?.checked || 0} prompts triggered a mention`
       );
 
-      // Refresh the page data
       router.refresh();
     } catch (err) {
       setMessage(`Error: ${err.message}`);

@@ -1,12 +1,10 @@
 import { NextResponse } from "next/server";
 import { buildMonthlyReportData, buildReportEmailHtml } from "@/lib/tracker/report";
 import { sendMonthlyTrackerReport } from "@/lib/email";
+import { isAdminAuthed } from "@/lib/admin-auth";
 
 export async function POST(request) {
-  const { searchParams } = new URL(request.url);
-  const key = searchParams.get("key");
-
-  if (!key || key !== process.env.ADMIN_KEY) {
+  if (!isAdminAuthed(request)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

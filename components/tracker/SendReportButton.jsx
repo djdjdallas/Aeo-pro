@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 
-export default function SendReportButton({ adminKey }) {
+export default function SendReportButton() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState(null);
 
@@ -13,7 +13,7 @@ export default function SendReportButton({ adminKey }) {
     setMessage(null);
 
     try {
-      const res = await fetch(`/api/tracker/send-report?key=${adminKey}`, {
+      const res = await fetch("/api/tracker/send-report", {
         method: "POST",
       });
       const data = await res.json();

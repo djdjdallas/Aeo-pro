@@ -22,7 +22,7 @@ const BUSINESS_TYPES = [
   "Other",
 ];
 
-export default function AdminLeadsTable({ leads: initialLeads, adminKey }) {
+export default function AdminLeadsTable({ leads: initialLeads }) {
   const [leads, setLeads] = useState(initialLeads);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -49,7 +49,7 @@ export default function AdminLeadsTable({ leads: initialLeads, adminKey }) {
   async function updateLead(id, updates) {
     setSaving((prev) => ({ ...prev, [id]: true }));
     try {
-      const res = await fetch(`/api/leads/${id}?key=${adminKey}`, {
+      const res = await fetch(`/api/leads/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(updates),
