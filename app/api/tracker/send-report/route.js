@@ -3,6 +3,51 @@ import { buildMonthlyReportData, buildReportEmailHtml } from "@/lib/tracker/repo
 import { sendMonthlyTrackerReport } from "@/lib/email";
 import { isAdminAuthed } from "@/lib/admin-auth";
 
+export async function GET(request) {
+  if (!isAdminAuthed(request)) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  try {
+    // Default to previous calendar month
+    const now = new Date();
+    const firstOfThisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const lastMonth = new Date(firstOfThisMonth);
+    lastMonth.setDate(lastMonth.getDate() - 1);
+
+    const startDate = new Date(lastMonth.getFullYear(), lastMonth.getMonth(), 1)
+      .toISOString()
+      .split("T")[0];
+    const endDate = lastMonth.toISOString().split("T")[0];
+
+    const reportData = await buildMonthlyReportData(startDate, endDate);
+    const html = buildReportEmailHtml(reportData);
+
+    const monthName = new Date(startDate).toLocaleDateString("en-US", {
+      month: "long",
+      year: "numeric",
+    });
+
+    const result = await sendMonthlyTrackerReport(html, monthName);
+
+    if (!result.success) {
+      return NextResponse.json(
+        { error: "Failed to send email", details: result.error },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json({
+      success: true,
+      period: { startDate, endDate },
+      clients: reportData.clients.length,
+    });
+  } catch (err) {
+    console.error("Send report error:", err);
+    return NextResponse.json({ error: err.message }, { status: 500 });
+  }
+}
+
 export async function POST(request) {
   if (!isAdminAuthed(request)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

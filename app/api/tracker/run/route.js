@@ -3,6 +3,31 @@ import { createServerClient } from "@/lib/supabase";
 import { runTrackerForClient } from "@/lib/tracker/runner";
 import { isAdminAuthed } from "@/lib/admin-auth";
 
+export async function GET(request) {
+  if (!isAdminAuthed(request)) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  try {
+    const supabase = createServerClient();
+    const { data: allClients } = await supabase
+      .from("tracker_clients")
+      .select("id");
+    const clientIds = allClients?.map((c) => c.id) || [];
+
+    const summary = [];
+    for (const id of clientIds) {
+      const result = await runTrackerForClient(id);
+      summary.push({ client_id: id, ...result });
+    }
+
+    return NextResponse.json({ success: true, summary });
+  } catch (err) {
+    console.error("Run tracker error:", err);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  }
+}
+
 export async function POST(request) {
   if (!isAdminAuthed(request)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -18,7 +43,6 @@ export async function POST(request) {
     if (client_id) {
       clientIds = [client_id];
     } else {
-      // No client_id = run all (used by Vercel cron)
       const { data: allClients } = await supabase
         .from("tracker_clients")
         .select("id");

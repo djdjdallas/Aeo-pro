@@ -1,11 +1,11 @@
 {
   "crons": [
     {
-      "path": "/api/tracker/run?key=ILoveAEOAuditTool",
+      "path": "/api/tracker/run",
       "schedule": "0 8 * * *"
     },
     {
-      "path": "/api/tracker/send-report?key=ILoveAEOAuditTool",
+      "path": "/api/tracker/send-report",
       "schedule": "0 9 1 * *"
     }
   ]
