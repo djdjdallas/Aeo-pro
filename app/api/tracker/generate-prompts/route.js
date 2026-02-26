@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { createServerClient } from "@/lib/supabase";
 import { generatePromptsForClient } from "@/lib/tracker/runner";
 import { isAdminAuthed } from "@/lib/admin-auth";
 
@@ -10,7 +9,7 @@ export async function POST(request) {
 
   try {
     const body = await request.json();
-    const { business_name, business_type, location, target_url, lead_id, differentiators } = body;
+    const { business_name, business_type, location, differentiators } = body;
 
     if (!business_name || !business_type) {
       return NextResponse.json(
@@ -19,36 +18,11 @@ export async function POST(request) {
       );
     }
 
-    const supabase = createServerClient();
-
-    // Create the tracker client record
-    const { data: client, error: clientError } = await supabase
-      .from("tracker_clients")
-      .insert({ business_name, business_type, location, target_url: target_url || null, lead_id: lead_id || null })
-      .select("id")
-      .single();
-
-    if (clientError) throw clientError;
-
-    // Generate prompts with Claude
+    // Generate prompts with Claude — no DB writes yet
     const prompts = await generatePromptsForClient(business_type, location || "", business_name, differentiators || "");
-
-    // Bulk insert prompts
-    const promptRows = prompts.map((p) => ({
-      client_id: client.id,
-      prompt: p,
-    }));
-
-    const { error: promptsError } = await supabase
-      .from("tracked_prompts")
-      .insert(promptRows);
-
-    if (promptsError) throw promptsError;
 
     return NextResponse.json({
       success: true,
-      client_id: client.id,
-      prompts_created: prompts.length,
       prompts,
     });
   } catch (err) {

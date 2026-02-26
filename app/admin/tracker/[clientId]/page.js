@@ -3,6 +3,7 @@ import Link from "next/link";
 import { createServerClient } from "@/lib/supabase";
 import TrackerClientActions from "@/components/tracker/TrackerClientActions";
 import TrackerResultsTable from "@/components/tracker/TrackerResultsTable";
+import EditablePromptsList from "@/components/tracker/EditablePromptsList";
 
 export const dynamic = "force-dynamic";
 
@@ -104,20 +105,8 @@ export default async function TrackerClientPage({ params }) {
         ))}
       </div>
 
-      {/* Prompts being tracked */}
-      <div className="bg-[#111111] border border-[#1f1f1f] rounded-xl p-5 mb-6">
-        <p className="text-xs text-gray-500 uppercase tracking-wider mb-3">
-          Tracking These Prompts ({prompts?.length || 0})
-        </p>
-        <ol className="space-y-2">
-          {prompts?.map((p, i) => (
-            <li key={p.id} className="flex gap-3 text-sm text-gray-300">
-              <span className="text-gray-600 shrink-0">{i + 1}.</span>
-              <span>{p.prompt}</span>
-            </li>
-          ))}
-        </ol>
-      </div>
+      {/* Prompts being tracked (editable) */}
+      <EditablePromptsList prompts={prompts || []} clientId={clientId} />
 
       {/* Results table */}
       <TrackerResultsTable results={results || []} clientName={client.business_name} />
