@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase";
 import { isAdminAuthed } from "@/lib/admin-auth";
+import { sendClientWelcomeEmail } from "@/lib/email";
 
 export async function POST(request) {
   if (!isAdminAuthed(request)) {
@@ -9,7 +10,7 @@ export async function POST(request) {
 
   try {
     const body = await request.json();
-    const { business_name, business_type, location, target_url, lead_id, prompts } = body;
+    const { business_name, business_type, location, target_url, lead_id, prompts, contact_email, contact_name } = body;
 
     if (!business_name || !business_type || !prompts?.length) {
       return NextResponse.json(
@@ -23,7 +24,14 @@ export async function POST(request) {
     // Create the tracker client record
     const { data: client, error: clientError } = await supabase
       .from("tracker_clients")
-      .insert({ business_name, business_type, location, target_url: target_url || null, lead_id: lead_id || null })
+      .insert({
+        business_name,
+        business_type,
+        location,
+        target_url: target_url || null,
+        lead_id: lead_id || null,
+        contact_email: contact_email || null,
+      })
       .select("id")
       .single();
 
@@ -42,6 +50,20 @@ export async function POST(request) {
       .insert(promptRows);
 
     if (promptsError) throw promptsError;
+
+    // Send welcome email if contact email was provided
+    if (contact_email) {
+      try {
+        await sendClientWelcomeEmail({
+          email: contact_email,
+          contactName: contact_name || business_name,
+          businessName: business_name,
+          prompts: promptRows.map((r) => r.prompt),
+        });
+      } catch (emailErr) {
+        console.error("Welcome email failed (non-fatal):", emailErr.message);
+      }
+    }
 
     return NextResponse.json({
       success: true,

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase";
 import { isAdminAuthed } from "@/lib/admin-auth";
+import { buildTrendData } from "@/lib/tracker/trends";
 
 export async function GET(request, { params }) {
   const { clientId } = await params;
@@ -29,19 +30,13 @@ export async function GET(request, { params }) {
     ? Math.round((totalMentions / totalChecks) * 100)
     : 0;
 
-  // Group by date for trend chart
-  const byDate = {};
-  results?.forEach((r) => {
-    const date = r.checked_at.split("T")[0];
-    if (!byDate[date]) byDate[date] = { total: 0, mentioned: 0 };
-    byDate[date].total++;
-    if (r.was_mentioned) byDate[date].mentioned++;
-  });
+  // Build trend data with rolling averages
+  const trendData = buildTrendData(results || []);
 
   return NextResponse.json({
     client,
     stats: { total_checks: totalChecks, total_mentions: totalMentions, mention_rate: mentionRate },
-    trend: byDate,
+    trend: trendData,
     results: results || [],
   });
 }

@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
+import OpenAI from "openai";
 import * as cheerio from "cheerio";
 
-export const maxDuration = 60;
+export const maxDuration = 120;
 
 function extractSiteData($, url) {
   const title = $("title").first().text().trim();
@@ -80,6 +81,10 @@ function extractSiteData($, url) {
     { name: "Angi", pattern: /angi\.com|angieslist\.com/i },
     { name: "Facebook", pattern: /facebook\.com/i },
     { name: "Google Business", pattern: /google\.com\/business|business\.google/i },
+    { name: "Trustpilot", pattern: /trustpilot\.com/i },
+    { name: "G2", pattern: /g2\.com/i },
+    { name: "Capterra", pattern: /capterra\.com/i },
+    { name: "HomeAdvisor", pattern: /homeadvisor\.com/i },
   ];
   $("a[href]").each((_, el) => {
     const href = $(el).attr("href") || "";
@@ -186,6 +191,128 @@ export async function POST(request) {
       siteData = { url: parsedUrl.href, textSample: html.slice(0, 2000), parseError: true };
     }
 
+    // Phase 4: Technical Checks (llms.txt, robots.txt, Bing indexation) — run in parallel
+    const origin = parsedUrl.origin;
+    const hostname = parsedUrl.hostname;
+    const techChecks = { llmsTxt: null, robotsTxt: null, bingIndexed: null };
+
+    const [llmsResult, robotsResult, bingResult] = await Promise.allSettled([
+      // llms.txt check
+      fetch(`${origin}/llms.txt`, { signal: AbortSignal.timeout(5000) })
+        .then(async (r) => {
+          if (!r.ok) return { exists: false };
+          const text = await r.text();
+          return { exists: true, preview: text.slice(0, 500) };
+        }),
+      // robots.txt check
+      fetch(`${origin}/robots.txt`, { signal: AbortSignal.timeout(5000) })
+        .then(async (r) => {
+          if (!r.ok) return { exists: false, aiCrawlers: {} };
+          const text = await r.text();
+          const aiCrawlers = [
+            "GPTBot", "OAI-SearchBot", "PerplexityBot", "ClaudeBot",
+            "Claude-SearchBot", "Google-Extended", "ChatGPT-User", "anthropic-ai",
+          ];
+          const crawlerStatus = {};
+          for (const crawler of aiCrawlers) {
+            const regex = new RegExp(`User-agent:\\s*${crawler}[\\s\\S]*?(?=User-agent:|$)`, "i");
+            const match = text.match(regex);
+            if (match) {
+              crawlerStatus[crawler] = match[0].toLowerCase().includes("disallow: /") ? "blocked" : "allowed";
+            } else {
+              crawlerStatus[crawler] = "not specified";
+            }
+          }
+          return { exists: true, aiCrawlers: crawlerStatus };
+        }),
+      // Bing indexation check
+      fetch(`https://www.bing.com/search?q=site:${hostname}`, {
+        signal: AbortSignal.timeout(5000),
+        headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36" },
+      }).then(async (r) => {
+        const text = await r.text();
+        const hasResults = !text.includes("No results found") && !text.includes("There are no results for");
+        return { indexed: hasResults };
+      }),
+    ]);
+
+    if (llmsResult.status === "fulfilled") techChecks.llmsTxt = llmsResult.value;
+    if (robotsResult.status === "fulfilled") techChecks.robotsTxt = robotsResult.value;
+    if (bingResult.status === "fulfilled") techChecks.bingIndexed = bingResult.value?.indexed ?? null;
+
+    // Add tech checks to site data for Claude
+    siteData.techChecks = techChecks;
+
+    // Phase 2: Live AI Visibility Check — query ChatGPT and Perplexity about the business
+    let liveAiCheck = null;
+    try {
+      // Extract business name and type from site data
+      const businessName = siteData.title?.split(/[|\-–—]/).map((s) => s.trim())[0] || hostname;
+      const businessType = siteData.schemas?.find((s) => s["@type"])?.["@type"] || "";
+      const location = siteData.schemas?.find((s) => s.address?.addressLocality)?.address?.addressLocality || "";
+
+      const aiPrompts = [];
+      if (location && businessType) {
+        aiPrompts.push(`best ${businessType.toLowerCase()} in ${location}`);
+        aiPrompts.push(`who do you recommend for ${businessType.toLowerCase()} near ${location}`);
+      } else if (businessType) {
+        aiPrompts.push(`best ${businessType.toLowerCase()} services`);
+        aiPrompts.push(`recommend a good ${businessType.toLowerCase()}`);
+      } else {
+        aiPrompts.push(`tell me about ${businessName}`);
+        aiPrompts.push(`is ${businessName} a good company`);
+      }
+
+      const checkPrompt = aiPrompts[0];
+
+      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+      const perplexity = new OpenAI({ apiKey: process.env.PERPLEXITY_API_KEY, baseURL: "https://api.perplexity.ai" });
+
+      const [chatgptResult, perplexityResult] = await Promise.allSettled([
+        openai.chat.completions.create({
+          model: "gpt-4.1",
+          messages: [
+            { role: "system", content: "You are a helpful local search assistant." },
+            { role: "user", content: checkPrompt },
+          ],
+        }).then((r) => r.choices[0].message.content),
+        perplexity.chat.completions.create({
+          model: "llama-3.1-sonar-small-128k-online",
+          messages: [
+            { role: "system", content: "You are a helpful local search assistant." },
+            { role: "user", content: checkPrompt },
+          ],
+        }).then((r) => r.choices[0].message.content),
+      ]);
+
+      const lowerBusiness = businessName.toLowerCase();
+      const checkMention = (text) => {
+        if (!text) return { mentioned: false, snippet: null };
+        const lower = text.toLowerCase();
+        if (lower.includes(lowerBusiness)) {
+          const pos = lower.indexOf(lowerBusiness);
+          const start = Math.max(0, pos - 60);
+          const end = Math.min(text.length, pos + 120);
+          return { mentioned: true, snippet: "..." + text.slice(start, end) + "..." };
+        }
+        return { mentioned: false, snippet: null };
+      };
+
+      liveAiCheck = {
+        prompt_used: checkPrompt,
+        business_name: businessName,
+        chatgpt: chatgptResult.status === "fulfilled"
+          ? { ...checkMention(chatgptResult.value), error: null }
+          : { mentioned: false, snippet: null, error: "API error" },
+        perplexity: perplexityResult.status === "fulfilled"
+          ? { ...checkMention(perplexityResult.value), error: null }
+          : { mentioned: false, snippet: null, error: "API error" },
+      };
+    } catch (aiCheckError) {
+      console.error("Live AI check failed:", aiCheckError.message);
+      // Non-fatal — continue without live check
+    }
+
     // Send to Claude
     let auditResult;
     try {
@@ -220,7 +347,8 @@ JSON structure:
     {"name": "Citation Signals", "score": <0-100>, "status": "<status>", "finding": "<1-2 sentences>", "fix": "<1-2 sentences>"},
     {"name": "FAQ & Q&A Content", "score": <0-100>, "status": "<status>", "finding": "<1-2 sentences>", "fix": "<1-2 sentences>"},
     {"name": "Local Authority", "score": <0-100>, "status": "<status>", "finding": "<1-2 sentences>", "fix": "<1-2 sentences>"},
-    {"name": "Review Signals", "score": <0-100>, "status": "<status>", "finding": "<1-2 sentences>", "fix": "<1-2 sentences>"}
+    {"name": "Review Signals", "score": <0-100>, "status": "<status>", "finding": "<1-2 sentences>", "fix": "<1-2 sentences>"},
+    {"name": "AI Accessibility", "score": <0-100>, "status": "<status>", "finding": "<1-2 sentences about llms.txt presence, robots.txt AI crawler rules, and Bing indexation>", "fix": "<1-2 sentences>"}
   ],
   "top_3_priorities": ["<priority 1>", "<priority 2>", "<priority 3>"],
   "ai_visibility_prediction": "<1 short paragraph>",
@@ -279,6 +407,7 @@ JSON structure:
         ...auditResult,
         url: parsedUrl.href,
         date: new Date().toISOString(),
+        live_ai_check: liveAiCheck,
       },
     });
   } catch (err) {

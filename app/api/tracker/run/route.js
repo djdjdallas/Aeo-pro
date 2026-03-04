@@ -3,6 +3,8 @@ import { createServerClient } from "@/lib/supabase";
 import { runTrackerForClient } from "@/lib/tracker/runner";
 import { isAdminAuthed } from "@/lib/admin-auth";
 
+export const maxDuration = 120;
+
 export async function GET(request) {
   if (!isAdminAuthed(request)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

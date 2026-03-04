@@ -13,12 +13,15 @@ import {
   FileText,
   Brain,
   BarChart3,
+  Bot,
 } from "lucide-react";
 
 const LOADING_STEPS = [
   { label: "Fetching website...", icon: Search },
   { label: "Analyzing content structure...", icon: FileText },
+  { label: "Checking AI accessibility...", icon: FileText },
   { label: "Running AI analysis...", icon: Brain },
+  { label: "Querying AI assistants...", icon: Bot },
   { label: "Generating report...", icon: BarChart3 },
 ];
 

@@ -6,35 +6,35 @@ const steps = [
     icon: ClipboardCheck,
     title: "Audit",
     description:
-      "We find every question people ask AI about your category in your city.",
+      "We map every high-intent question people ask AI about your category in your city, then live-test whether you appear in ChatGPT, Perplexity, Gemini, and Google AI Overviews.",
   },
   {
     num: "02",
     icon: Settings,
     title: "Optimize",
     description:
-      "We make your website readable and trustworthy to AI engines.",
+      "We add structured schema, llms.txt, and FAQ markup so AI engines can extract your credentials. Research shows articles carry 41% of AI recommendation weight.",
   },
   {
     num: "03",
     icon: Building2,
     title: "Build",
     description:
-      "We establish your presence across every source AI pulls from.",
+      "We establish your presence across AI-cited sources: Wikipedia (3.2x citation multiplier), Reddit (cited in 46.7% of AI responses), and high-authority directories.",
   },
   {
     num: "04",
     icon: FileText,
     title: "Seed",
     description:
-      "We publish targeted content that teaches AI to recommend you by name.",
+      "We publish targeted 'Best X for Y' content and citation-rich articles that teach AI to recommend your business by name — the strategy proven to drive AI mentions.",
   },
   {
     num: "05",
     icon: BarChart3,
     title: "Track",
     description:
-      "Weekly reports showing your AI visibility score growing over time.",
+      "Multi-shot tracking across 4 AI models with confidence scoring, sentiment analysis, competitor share-of-voice, and rolling trend charts showing your growth.",
   },
 ];
 

@@ -5,6 +5,10 @@
       "schedule": "0 8 * * *"
     },
     {
+      "path": "/api/tracker/alerts",
+      "schedule": "0 10 * * *"
+    },
+    {
       "path": "/api/tracker/send-report",
       "schedule": "0 9 1 * *"
     }

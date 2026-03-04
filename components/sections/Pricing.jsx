@@ -8,7 +8,7 @@ const plans = [
     price: "$500",
     popular: false,
     features: [
-      "Schema optimization",
+      "Schema + llms.txt optimization",
       "20 citation submissions",
       "Monthly AI visibility report",
     ],
@@ -20,9 +20,9 @@ const plans = [
     popular: true,
     features: [
       "Everything in Starter",
-      "Weekly AI monitoring",
-      "Content drops for top 10 queries",
-      "Competitor gap analysis",
+      "'Best X for Y' article placement",
+      "Reddit authority building",
+      "Wikipedia citation strategy",
     ],
     footnote: "Setup in 48 hours \u00B7 Cancel anytime \u00B7 Most popular",
   },
@@ -32,8 +32,8 @@ const plans = [
     popular: false,
     features: [
       "Everything in Growth",
-      "Google Business optimization",
-      "Review strategy + response management",
+      "Review platform management",
+      "Competitor share-of-voice tracking",
       "Bi-weekly strategy calls",
     ],
     footnote: "Setup in 48 hours \u00B7 Dedicated onboarding call",

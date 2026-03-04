@@ -12,6 +12,8 @@ import {
   Zap,
   Lightbulb,
   Sparkles,
+  Bot,
+  XCircle,
 } from "lucide-react";
 
 function ScoreGauge({ score, size = 120 }) {
@@ -155,6 +157,33 @@ function StatusBadge({ status }) {
   );
 }
 
+function LiveAiCard({ model, result }) {
+  if (!result) return null;
+  const isMentioned = result.mentioned;
+  return (
+    <div className={`bg-[#111111] border rounded-2xl p-5 ${
+      isMentioned ? "border-green-500/30" : "border-red-500/30"
+    }`}>
+      <div className="flex items-center gap-2 mb-3">
+        {isMentioned ? (
+          <CheckCircle className="w-5 h-5 text-green-400" />
+        ) : (
+          <XCircle className="w-5 h-5 text-red-400" />
+        )}
+        <h4 className="font-semibold text-white capitalize">{model}</h4>
+      </div>
+      {isMentioned ? (
+        <p className="text-sm text-gray-300 italic leading-relaxed">{result.snippet}</p>
+      ) : (
+        <p className="text-sm text-gray-500">Your business was not mentioned in this AI's response.</p>
+      )}
+      {result.error && (
+        <p className="text-xs text-red-400 mt-2">{result.error}</p>
+      )}
+    </div>
+  );
+}
+
 export default function AuditReport({ data }) {
   const {
     business_name,
@@ -164,6 +193,7 @@ export default function AuditReport({ data }) {
     ai_visibility_prediction,
     information_gain_signals,
     information_gain_opportunity,
+    live_ai_check,
     url,
     date,
   } = data;
@@ -214,6 +244,23 @@ export default function AuditReport({ data }) {
           </button>
         </div>
       </div>
+
+      {/* Live AI Visibility Check */}
+      {live_ai_check && (
+        <div className="bg-[#0d0d0d] border border-[#3b82f6]/40 rounded-2xl p-6">
+          <div className="flex items-center gap-2 mb-2">
+            <Bot className="w-5 h-5 text-[#3b82f6]" />
+            <h3 className="text-lg font-bold tracking-tight">Live AI Visibility Check</h3>
+          </div>
+          <p className="text-gray-500 text-xs mb-4">
+            We asked AI assistants: <span className="text-gray-300 italic">"{live_ai_check.prompt_used}"</span>
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <LiveAiCard model="ChatGPT" result={live_ai_check.chatgpt} />
+            <LiveAiCard model="Perplexity" result={live_ai_check.perplexity} />
+          </div>
+        </div>
+      )}
 
       {/* Information Gain Signals */}
       {information_gain_signals?.length > 0 && (
