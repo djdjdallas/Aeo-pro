@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
-import OpenAI from "openai";
 import * as cheerio from "cheerio";
+import { generateAuditPrompts } from "@/lib/audit/prompts";
+import { runMultiPromptAiCheck } from "@/lib/audit/ai-check";
+import { buildCitationTiers } from "@/lib/audit/citation-tiers";
 
 export const maxDuration = 120;
 
@@ -72,7 +74,7 @@ function extractSiteData($, url) {
     /(?:\+?1[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}/g;
   const phones = [...new Set((bodyText.match(phoneRegex) || []).slice(0, 5))];
 
-  // Directory links
+  // Directory links (with ProductHunt added)
   const directoryLinks = [];
   const directoryPatterns = [
     { name: "Google Maps", pattern: /google\.com\/maps|goo\.gl\/maps/i },
@@ -85,7 +87,13 @@ function extractSiteData($, url) {
     { name: "G2", pattern: /g2\.com/i },
     { name: "Capterra", pattern: /capterra\.com/i },
     { name: "HomeAdvisor", pattern: /homeadvisor\.com/i },
+    { name: "ProductHunt", pattern: /producthunt\.com/i },
   ];
+
+  // Extract YouTube, Reddit links alongside directory links
+  const youtubeLinks = [];
+  const redditLinks = [];
+
   $("a[href]").each((_, el) => {
     const href = $(el).attr("href") || "";
     for (const dir of directoryPatterns) {
@@ -93,7 +101,16 @@ function extractSiteData($, url) {
         directoryLinks.push(dir.name);
       }
     }
+    if (/youtube\.com|youtu\.be/i.test(href) && !youtubeLinks.includes(href)) {
+      youtubeLinks.push(href);
+    }
+    if (/reddit\.com/i.test(href) && !redditLinks.includes(href)) {
+      redditLinks.push(href);
+    }
   });
+
+  // YouTube iframe embeds
+  const youtubeIframes = $('iframe[src*="youtube.com"], iframe[src*="youtu.be"]').length;
 
   // Review/testimonial detection
   const hasReviews =
@@ -116,6 +133,9 @@ function extractSiteData($, url) {
     images: { total: totalImages, withAlt: imagesWithAlt, withoutAlt: imagesWithoutAlt },
     phones,
     directoryLinks,
+    youtubeLinks,
+    redditLinks,
+    youtubeIframes,
     hasReviews,
     textSample,
   };
@@ -124,7 +144,7 @@ function extractSiteData($, url) {
 export async function POST(request) {
   try {
     const body = await request.json();
-    const { url } = body;
+    const { url, business_name, business_type } = body;
 
     // Validate URL
     let parsedUrl;
@@ -184,19 +204,33 @@ export async function POST(request) {
 
     // Parse with Cheerio
     let siteData;
+    let $cheerio;
     try {
-      const $ = cheerio.load(html);
-      siteData = extractSiteData($, parsedUrl.href);
+      $cheerio = cheerio.load(html);
+      siteData = extractSiteData($cheerio, parsedUrl.href);
     } catch {
       siteData = { url: parsedUrl.href, textSample: html.slice(0, 2000), parseError: true };
+      $cheerio = null;
     }
 
-    // Phase 4: Technical Checks (llms.txt, robots.txt, Bing indexation) — run in parallel
-    const origin = parsedUrl.origin;
+    // Determine business context — prefer user input, fall back to inference
     const hostname = parsedUrl.hostname;
-    const techChecks = { llmsTxt: null, robotsTxt: null, bingIndexed: null };
+    const inferredName = siteData.title?.split(/[|\-–—]/).map((s) => s.trim())[0] || hostname;
+    const inferredType = siteData.schemas?.find((s) => s["@type"])?.["@type"] || "";
+    const inferredLocation = siteData.schemas?.find((s) => s.address?.addressLocality)?.address?.addressLocality || "";
 
-    const [llmsResult, robotsResult, bingResult] = await Promise.allSettled([
+    const resolvedBusinessName = business_name?.trim() || inferredName;
+    const resolvedBusinessType = business_type?.trim() || inferredType;
+    const resolvedLocation = inferredLocation;
+
+    // Phase 1: Technical Checks — run in parallel (llms.txt, robots.txt, Bing, Wikipedia, IndexNow)
+    const origin = parsedUrl.origin;
+    const techChecks = { llmsTxt: null, robotsTxt: null, bingIndexed: null, wikipedia: null, indexNow: null };
+
+    // Build Wikipedia slug from business name
+    const wikiSlug = resolvedBusinessName.replace(/\s+/g, "_");
+
+    const [llmsResult, robotsResult, bingResult, wikiResult, indexNowResult] = await Promise.allSettled([
       // llms.txt check
       fetch(`${origin}/llms.txt`, { signal: AbortSignal.timeout(5000) })
         .then(async (r) => {
@@ -234,98 +268,84 @@ export async function POST(request) {
         const hasResults = !text.includes("No results found") && !text.includes("There are no results for");
         return { indexed: hasResults };
       }),
+      // Wikipedia existence check
+      fetch(`https://en.wikipedia.org/wiki/${encodeURIComponent(wikiSlug)}`, {
+        signal: AbortSignal.timeout(5000),
+        method: "HEAD",
+      }).then((r) => ({ exists: r.status === 200 })),
+      // IndexNow key file check
+      fetch(`${origin}/indexnow.txt`, { signal: AbortSignal.timeout(5000) })
+        .then(async (r) => {
+          if (!r.ok) return { exists: false };
+          return { exists: true };
+        }),
     ]);
 
     if (llmsResult.status === "fulfilled") techChecks.llmsTxt = llmsResult.value;
     if (robotsResult.status === "fulfilled") techChecks.robotsTxt = robotsResult.value;
     if (bingResult.status === "fulfilled") techChecks.bingIndexed = bingResult.value?.indexed ?? null;
+    if (wikiResult.status === "fulfilled") techChecks.wikipedia = wikiResult.value;
+    if (indexNowResult.status === "fulfilled") techChecks.indexNow = indexNowResult.value;
 
-    // Add tech checks to site data for Claude
     siteData.techChecks = techChecks;
 
-    // Phase 2: Live AI Visibility Check — query ChatGPT and Perplexity about the business
+    // Phase 2: Multi-prompt AI Visibility Check (6 prompts x 2 models = 12 checks in parallel)
     let liveAiCheck = null;
     try {
-      // Extract business name and type from site data
-      const businessName = siteData.title?.split(/[|\-–—]/).map((s) => s.trim())[0] || hostname;
-      const businessType = siteData.schemas?.find((s) => s["@type"])?.["@type"] || "";
-      const location = siteData.schemas?.find((s) => s.address?.addressLocality)?.address?.addressLocality || "";
-
-      const aiPrompts = [];
-      if (location && businessType) {
-        aiPrompts.push(`best ${businessType.toLowerCase()} in ${location}`);
-        aiPrompts.push(`who do you recommend for ${businessType.toLowerCase()} near ${location}`);
-      } else if (businessType) {
-        aiPrompts.push(`best ${businessType.toLowerCase()} services`);
-        aiPrompts.push(`recommend a good ${businessType.toLowerCase()}`);
-      } else {
-        aiPrompts.push(`tell me about ${businessName}`);
-        aiPrompts.push(`is ${businessName} a good company`);
-      }
-
-      const checkPrompt = aiPrompts[0];
-
-      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-      const perplexity = new OpenAI({ apiKey: process.env.PERPLEXITY_API_KEY, baseURL: "https://api.perplexity.ai" });
-
-      const [chatgptResult, perplexityResult] = await Promise.allSettled([
-        openai.chat.completions.create({
-          model: "gpt-4.1",
-          messages: [
-            { role: "system", content: "You are a helpful local search assistant." },
-            { role: "user", content: checkPrompt },
-          ],
-        }).then((r) => r.choices[0].message.content),
-        perplexity.chat.completions.create({
-          model: "llama-3.1-sonar-small-128k-online",
-          messages: [
-            { role: "system", content: "You are a helpful local search assistant." },
-            { role: "user", content: checkPrompt },
-          ],
-        }).then((r) => r.choices[0].message.content),
-      ]);
-
-      const lowerBusiness = businessName.toLowerCase();
-      const checkMention = (text) => {
-        if (!text) return { mentioned: false, snippet: null };
-        const lower = text.toLowerCase();
-        if (lower.includes(lowerBusiness)) {
-          const pos = lower.indexOf(lowerBusiness);
-          const start = Math.max(0, pos - 60);
-          const end = Math.min(text.length, pos + 120);
-          return { mentioned: true, snippet: "..." + text.slice(start, end) + "..." };
-        }
-        return { mentioned: false, snippet: null };
-      };
-
-      liveAiCheck = {
-        prompt_used: checkPrompt,
-        business_name: businessName,
-        chatgpt: chatgptResult.status === "fulfilled"
-          ? { ...checkMention(chatgptResult.value), error: null }
-          : { mentioned: false, snippet: null, error: "API error" },
-        perplexity: perplexityResult.status === "fulfilled"
-          ? { ...checkMention(perplexityResult.value), error: null }
-          : { mentioned: false, snippet: null, error: "API error" },
-      };
+      const auditPrompts = generateAuditPrompts(resolvedBusinessName, resolvedBusinessType, resolvedLocation);
+      liveAiCheck = await runMultiPromptAiCheck(auditPrompts, resolvedBusinessName, parsedUrl.href);
     } catch (aiCheckError) {
-      console.error("Live AI check failed:", aiCheckError.message);
+      console.error("Multi-prompt AI check failed:", aiCheckError.message);
       // Non-fatal — continue without live check
     }
 
-    // Send to Claude
+    // Phase 3: Build citation tiers from site data + tech check results
+    const bodyText = siteData.textSample || "";
+    const citationTiers = buildCitationTiers({
+      businessName: resolvedBusinessName,
+      $: $cheerio,
+      directoryLinks: siteData.directoryLinks || [],
+      wikipediaExists: techChecks.wikipedia?.exists ?? false,
+      bodyText,
+    });
+
+    // Phase 4: Claude Analysis — expanded prompt with multi-prompt data + citation tiers
     let auditResult;
     try {
       const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
-      const extractedData = siteData;
+      // Build AI check summary for Claude
+      const aiCheckSummary = liveAiCheck ? {
+        total_checks: liveAiCheck.total_checks,
+        client_mentions: liveAiCheck.client_mentions,
+        mention_rate: liveAiCheck.mention_rate,
+        prompts_used: liveAiCheck.prompts_used,
+        share_of_voice_top_5: Object.entries(liveAiCheck.share_of_voice)
+          .sort((a, b) => b[1].mentions - a[1].mentions)
+          .slice(0, 5)
+          .map(([name, data]) => `${name}: ${data.mentions}/${data.total} (${data.percentage}%)`),
+      } : null;
+
+      // Build crawler access summary
+      const crawlerData = techChecks.robotsTxt?.aiCrawlers || {};
+      const blockedCrawlers = Object.entries(crawlerData)
+        .filter(([, status]) => status === "blocked")
+        .map(([name]) => name);
+
+      const extractedData = {
+        ...siteData,
+        ai_check_summary: aiCheckSummary,
+        citation_tier_summary: citationTiers,
+        blocked_ai_crawlers: blockedCrawlers,
+      };
+
       const message = await anthropic.messages.create({
         model: "claude-sonnet-4-6",
         max_tokens: 4096,
         messages: [
           {
             role: "user",
-            content: `You are an AEO (Answer Engine Optimization) expert. Audit this local business website for AI search visibility.
+            content: `You are an AEO (Answer Engine Optimization) expert. Audit this business website for AI search visibility.
 
 Website data:
 ${JSON.stringify(extractedData, null, 2)}
@@ -334,24 +354,34 @@ RULES:
 - Keep each "finding" and "fix" to 1-2 sentences max
 - If data is insufficient, use status "insufficient_data"
 - Be specific — reference actual content found
+- The AI check summary shows real results from querying ChatGPT and Perplexity with ${liveAiCheck?.total_checks || 0} checks
+- ${blockedCrawlers.length > 0 ? `CRITICAL: ${blockedCrawlers.length} AI crawlers are BLOCKED in robots.txt: ${blockedCrawlers.join(", ")}. Emphasize this heavily in AI Accessibility.` : "No AI crawlers are blocked in robots.txt."}
+- Citation tiers show presence across 6 citation source types
 - Return ONLY valid JSON, no markdown fences, no text outside the JSON
 
 JSON structure:
 {
   "overall_score": <0-100>,
-  "business_name": "<from title/schema or 'Unknown'>",
+  "business_name": "<from title/schema or '${resolvedBusinessName}'>",
   "information_gain_signals": ["<unique facts or credentials found>"],
   "categories": [
     {"name": "Schema Markup", "score": <0-100>, "status": "<critical|warning|good|insufficient_data>", "finding": "<1-2 sentences>", "fix": "<1-2 sentences>"},
     {"name": "AI Readability", "score": <0-100>, "status": "<status>", "finding": "<1-2 sentences>", "fix": "<1-2 sentences>"},
-    {"name": "Citation Signals", "score": <0-100>, "status": "<status>", "finding": "<1-2 sentences>", "fix": "<1-2 sentences>"},
+    {"name": "Citation Signals", "score": <0-100>, "status": "<status>", "finding": "<1-2 sentences referencing citation tier data>", "fix": "<1-2 sentences>"},
     {"name": "FAQ & Q&A Content", "score": <0-100>, "status": "<status>", "finding": "<1-2 sentences>", "fix": "<1-2 sentences>"},
     {"name": "Local Authority", "score": <0-100>, "status": "<status>", "finding": "<1-2 sentences>", "fix": "<1-2 sentences>"},
     {"name": "Review Signals", "score": <0-100>, "status": "<status>", "finding": "<1-2 sentences>", "fix": "<1-2 sentences>"},
-    {"name": "AI Accessibility", "score": <0-100>, "status": "<status>", "finding": "<1-2 sentences about llms.txt presence, robots.txt AI crawler rules, and Bing indexation>", "fix": "<1-2 sentences>"}
+    {"name": "AI Accessibility", "score": <0-100>, "status": "<status>", "finding": "<1-2 sentences about llms.txt, robots.txt AI crawler access, blocked crawlers, and Bing indexation>", "fix": "<1-2 sentences>"}
   ],
   "top_3_priorities": ["<priority 1>", "<priority 2>", "<priority 3>"],
-  "ai_visibility_prediction": "<1 short paragraph>",
+  "ai_visibility_prediction": {
+    "current_appearances": ${liveAiCheck?.client_mentions || 0},
+    "total_checks": ${liveAiCheck?.total_checks || 0},
+    "current_rate": ${liveAiCheck?.mention_rate || 0},
+    "predicted_rate_after_optimization": <estimated 0-100 based on current gaps>,
+    "ninety_day_target": "<e.g. Appear in 7/12 AI responses>",
+    "narrative": "<1-2 sentences: Based on current citation profile, schema gaps, and AI crawler access, here is the realistic prediction>"
+  },
   "information_gain_opportunity": "<1 short paragraph>"
 }`,
           },
@@ -408,6 +438,9 @@ JSON structure:
         url: parsedUrl.href,
         date: new Date().toISOString(),
         live_ai_check: liveAiCheck,
+        citation_tiers: citationTiers,
+        ai_crawler_access: techChecks.robotsTxt?.aiCrawlers || {},
+        indexnow: techChecks.indexNow,
       },
     });
   } catch (err) {

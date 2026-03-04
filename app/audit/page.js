@@ -14,14 +14,32 @@ import {
   Brain,
   BarChart3,
   Bot,
+  Building2,
+  ChevronDown,
 } from "lucide-react";
+
+const BUSINESS_TYPES = [
+  "HVAC / Plumbing",
+  "Roofing",
+  "Dentist",
+  "Law Firm",
+  "Med Spa",
+  "Contractor",
+  "Restaurant",
+  "Real Estate",
+  "Auto Repair",
+  "SaaS / Software",
+  "Other",
+];
 
 const LOADING_STEPS = [
   { label: "Fetching website...", icon: Search },
   { label: "Analyzing content structure...", icon: FileText },
   { label: "Checking AI accessibility...", icon: FileText },
+  { label: "Checking citation sources...", icon: FileText },
+  { label: "Querying ChatGPT (6 prompts)...", icon: Bot },
+  { label: "Querying Perplexity (6 prompts)...", icon: Bot },
   { label: "Running AI analysis...", icon: Brain },
-  { label: "Querying AI assistants...", icon: Bot },
   { label: "Generating report...", icon: BarChart3 },
 ];
 
@@ -34,6 +52,8 @@ const EXAMPLE_URLS = [
 export default function AuditPage() {
   const [view, setView] = useState("input");
   const [url, setUrl] = useState("");
+  const [businessName, setBusinessName] = useState("");
+  const [businessType, setBusinessType] = useState("");
   const [error, setError] = useState("");
   const [report, setReport] = useState(null);
   const [loadingStep, setLoadingStep] = useState(0);
@@ -69,7 +89,7 @@ export default function AuditPage() {
 
     setView("loading");
 
-    // Animate loading steps
+    // Animate loading steps (~2s each for 8 steps)
     let currentStep = 0;
     stepTimerRef.current = setInterval(() => {
       if (apiDoneRef.current) return;
@@ -79,13 +99,17 @@ export default function AuditPage() {
       } else {
         clearTimers();
       }
-    }, 1500);
+    }, 2000);
 
     try {
       const res = await fetch("/api/audit", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url: fullUrl }),
+        body: JSON.stringify({
+          url: fullUrl,
+          business_name: businessName.trim() || undefined,
+          business_type: businessType || undefined,
+        }),
       });
 
       const data = await res.json();
@@ -120,6 +144,8 @@ export default function AuditPage() {
   function handleReset() {
     setView("input");
     setUrl("");
+    setBusinessName("");
+    setBusinessType("");
     setError("");
     setReport(null);
     setLoadingStep(0);
@@ -157,6 +183,35 @@ export default function AuditPage() {
                 )}
                 autoFocus
               />
+            </div>
+
+            {/* Optional: Business Name */}
+            <div className="relative mb-4">
+              <Building2 className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
+              <input
+                type="text"
+                value={businessName}
+                onChange={(e) => setBusinessName(e.target.value)}
+                placeholder="Business name (optional)"
+                className="w-full bg-[#111111] border border-[#1f1f1f] text-white rounded-xl pl-12 pr-4 py-3 text-sm placeholder:text-gray-600 focus:outline-none focus:border-[#3b82f6] transition-colors"
+              />
+            </div>
+
+            {/* Optional: Business Type */}
+            <div className="relative mb-4">
+              <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" />
+              <select
+                value={businessType}
+                onChange={(e) => setBusinessType(e.target.value)}
+                className="w-full bg-[#111111] border border-[#1f1f1f] text-white rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-[#3b82f6] transition-colors appearance-none"
+              >
+                <option value="">Business type (optional)</option>
+                {BUSINESS_TYPES.map((type) => (
+                  <option key={type} value={type}>
+                    {type}
+                  </option>
+                ))}
+              </select>
             </div>
 
             {error && (
