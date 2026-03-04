@@ -144,7 +144,7 @@ function extractSiteData($, url) {
 export async function POST(request) {
   try {
     const body = await request.json();
-    const { url, business_name, business_type } = body;
+    const { url, business_name, business_type, business_description } = body;
 
     // Validate URL
     let parsedUrl;
@@ -292,7 +292,17 @@ export async function POST(request) {
     // Phase 2: Multi-prompt AI Visibility Check (6 prompts x 2 models = 12 checks in parallel)
     let liveAiCheck = null;
     try {
-      const auditPrompts = generateAuditPrompts(resolvedBusinessName, resolvedBusinessType, resolvedLocation);
+      const auditPrompts = await generateAuditPrompts({
+        businessName: resolvedBusinessName,
+        businessDescription: business_description?.trim() || "",
+        businessType: resolvedBusinessType,
+        location: resolvedLocation,
+        pageTitle: siteData.title || "",
+        metaDescription: siteData.metaDescription || "",
+        h1s: siteData.headings?.h1s || [],
+        h2s: siteData.headings?.h2s || [],
+        textSample: siteData.textSample || "",
+      });
       liveAiCheck = await runMultiPromptAiCheck(auditPrompts, resolvedBusinessName, parsedUrl.href);
     } catch (aiCheckError) {
       console.error("Multi-prompt AI check failed:", aiCheckError.message);

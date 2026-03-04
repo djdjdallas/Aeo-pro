@@ -15,30 +15,17 @@ import {
   BarChart3,
   Bot,
   Building2,
-  ChevronDown,
+  MessageSquare,
 } from "lucide-react";
-
-const BUSINESS_TYPES = [
-  "HVAC / Plumbing",
-  "Roofing",
-  "Dentist",
-  "Law Firm",
-  "Med Spa",
-  "Contractor",
-  "Restaurant",
-  "Real Estate",
-  "Auto Repair",
-  "SaaS / Software",
-  "Other",
-];
 
 const LOADING_STEPS = [
   { label: "Fetching website...", icon: Search },
   { label: "Analyzing content structure...", icon: FileText },
   { label: "Checking AI accessibility...", icon: FileText },
-  { label: "Checking citation sources...", icon: FileText },
+  { label: "Generating buyer-intent prompts...", icon: Brain },
   { label: "Querying ChatGPT (6 prompts)...", icon: Bot },
   { label: "Querying Perplexity (6 prompts)...", icon: Bot },
+  { label: "Checking citation sources...", icon: FileText },
   { label: "Running AI analysis...", icon: Brain },
   { label: "Generating report...", icon: BarChart3 },
 ];
@@ -53,7 +40,7 @@ export default function AuditPage() {
   const [view, setView] = useState("input");
   const [url, setUrl] = useState("");
   const [businessName, setBusinessName] = useState("");
-  const [businessType, setBusinessType] = useState("");
+  const [businessDescription, setBusinessDescription] = useState("");
   const [error, setError] = useState("");
   const [report, setReport] = useState(null);
   const [loadingStep, setLoadingStep] = useState(0);
@@ -108,7 +95,7 @@ export default function AuditPage() {
         body: JSON.stringify({
           url: fullUrl,
           business_name: businessName.trim() || undefined,
-          business_type: businessType || undefined,
+          business_description: businessDescription.trim() || undefined,
         }),
       });
 
@@ -145,7 +132,7 @@ export default function AuditPage() {
     setView("input");
     setUrl("");
     setBusinessName("");
-    setBusinessType("");
+    setBusinessDescription("");
     setError("");
     setReport(null);
     setLoadingStep(0);
@@ -197,21 +184,16 @@ export default function AuditPage() {
               />
             </div>
 
-            {/* Optional: Business Type */}
+            {/* Optional: Business Description */}
             <div className="relative mb-4">
-              <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" />
-              <select
-                value={businessType}
-                onChange={(e) => setBusinessType(e.target.value)}
-                className="w-full bg-[#111111] border border-[#1f1f1f] text-white rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-[#3b82f6] transition-colors appearance-none"
-              >
-                <option value="">Business type (optional)</option>
-                {BUSINESS_TYPES.map((type) => (
-                  <option key={type} value={type}>
-                    {type}
-                  </option>
-                ))}
-              </select>
+              <MessageSquare className="absolute left-4 top-3.5 w-5 h-5 text-gray-500" />
+              <textarea
+                value={businessDescription}
+                onChange={(e) => setBusinessDescription(e.target.value)}
+                placeholder="What does this business do and who is it for? (optional, dramatically improves accuracy)"
+                rows={2}
+                className="w-full bg-[#111111] border border-[#1f1f1f] text-white rounded-xl pl-12 pr-4 py-3 text-sm placeholder:text-gray-600 focus:outline-none focus:border-[#3b82f6] transition-colors resize-none"
+              />
             </div>
 
             {error && (
