@@ -106,16 +106,23 @@ function StatusBadge({ status }) {
 // ─── NEW: Multi-Prompt AI Results ───
 
 function MultiPromptResults({ liveAiCheck }) {
-  const [expandedPrompts, setExpandedPrompts] = useState(() => {
-    // First 2 expanded by default
-    const initial = {};
-    liveAiCheck?.prompt_results?.forEach((_, i) => {
-      if (i < 2) initial[i] = true;
-    });
-    return initial;
-  });
+  const [expandedPrompts, setExpandedPrompts] = useState({});
 
-  if (!liveAiCheck?.prompt_results?.length) return null;
+  // Set first 2 expanded on mount (safe — runs after null check in render)
+  const promptResults = liveAiCheck?.prompt_results;
+  const hasResults = Array.isArray(promptResults) && promptResults.length > 0;
+
+  // Initialize expanded state once
+  if (hasResults && Object.keys(expandedPrompts).length === 0) {
+    const initial = {};
+    promptResults.forEach((_, i) => { if (i < 2) initial[i] = true; });
+    if (Object.keys(initial).length > 0 && !expandedPrompts[0]) {
+      // Will be set on first render
+      setTimeout(() => setExpandedPrompts(initial), 0);
+    }
+  }
+
+  if (!hasResults) return null;
 
   const togglePrompt = (i) => {
     setExpandedPrompts((prev) => ({ ...prev, [i]: !prev[i] }));
@@ -241,16 +248,17 @@ function MultiPromptResults({ liveAiCheck }) {
 // ─── NEW: Share of Voice Table ───
 
 function ShareOfVoiceTable({ liveAiCheck }) {
-  if (!liveAiCheck?.share_of_voice) return null;
+  if (!liveAiCheck?.share_of_voice || typeof liveAiCheck.share_of_voice !== "object") return null;
 
-  const entries = Object.entries(liveAiCheck.share_of_voice)
-    .map(([name, data]) => ({ name, ...data }))
+  const sovEntries = Object.entries(liveAiCheck.share_of_voice);
+  if (sovEntries.length === 0) return null;
+
+  const entries = sovEntries
+    .map(([name, data]) => ({ name, mentions: data?.mentions ?? 0, total: data?.total ?? 0, percentage: data?.percentage ?? 0 }))
     .sort((a, b) => b.mentions - a.mentions)
     .slice(0, 15);
 
-  if (entries.length === 0) return null;
-
-  const clientName = liveAiCheck.business_name?.toLowerCase() || "";
+  const clientName = (liveAiCheck.business_name || "").toLowerCase();
 
   return (
     <div className="bg-[#111111] border border-[#1f1f1f] rounded-2xl p-6">
@@ -415,7 +423,12 @@ function AiVisibilityPrediction({ prediction }) {
     );
   }
 
-  const { current_appearances, total_checks, current_rate, predicted_rate_after_optimization, ninety_day_target, narrative } = prediction;
+  const current_appearances = prediction.current_appearances ?? 0;
+  const total_checks = prediction.total_checks ?? 0;
+  const current_rate = prediction.current_rate ?? 0;
+  const predicted_rate_after_optimization = prediction.predicted_rate_after_optimization ?? 0;
+  const ninety_day_target = prediction.ninety_day_target || "";
+  const narrative = prediction.narrative || "";
 
   return (
     <div className="bg-[#111111] border border-[#3b82f6]/30 rounded-2xl p-6">
@@ -454,26 +467,26 @@ function AiVisibilityPrediction({ prediction }) {
 // ─── Main Report ───
 
 export default function AuditReport({ data }) {
+  if (!data) return null;
+
   const {
-    business_name,
-    overall_score,
-    categories,
-    top_3_priorities,
+    business_name = "Unknown",
+    overall_score = 0,
+    categories = [],
+    top_3_priorities = [],
     ai_visibility_prediction,
-    information_gain_signals,
+    information_gain_signals = [],
     information_gain_opportunity,
     live_ai_check,
     citation_tiers,
     ai_crawler_access,
-    url,
+    url = "",
     date,
   } = data;
 
-  const formattedDate = new Date(date).toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
+  const formattedDate = date
+    ? new Date(date).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })
+    : "";
 
   return (
     <div className="space-y-8">
