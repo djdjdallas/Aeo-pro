@@ -11,7 +11,7 @@ export default function Footer() {
               First<span className="text-[#3b82f6]">Answer</span>
             </Link>
             <p className="mt-2 text-sm text-gray-500">
-              Get your business recommended by AI search engines.
+              Done-for-you AEO for local businesses. We get you recommended by ChatGPT, Perplexity, and every AI assistant your customers use.
             </p>
           </div>
 

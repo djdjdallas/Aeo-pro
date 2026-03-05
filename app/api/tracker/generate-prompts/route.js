@@ -9,7 +9,16 @@ export async function POST(request) {
 
   try {
     const body = await request.json();
-    const { business_name, business_type, location, differentiators } = body;
+    const {
+      business_name,
+      business_type,
+      location,
+      differentiators,
+      description,
+      buyer_persona,
+      buyer_jtbd,
+      competitors,
+    } = body;
 
     if (!business_name || !business_type) {
       return NextResponse.json(
@@ -18,8 +27,18 @@ export async function POST(request) {
       );
     }
 
-    // Generate prompts with Claude — no DB writes yet
-    const prompts = await generatePromptsForClient(business_type, location || "", business_name, differentiators || "");
+    const prompts = await generatePromptsForClient(
+      business_type,
+      location || "",
+      business_name,
+      differentiators || "",
+      {
+        description: description || "",
+        buyerPersona: buyer_persona || "",
+        buyerJtbd: buyer_jtbd || "",
+        competitors: competitors || "",
+      }
+    );
 
     return NextResponse.json({
       success: true,

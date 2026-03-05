@@ -10,7 +10,11 @@ export async function POST(request) {
 
   try {
     const body = await request.json();
-    const { business_name, business_type, location, target_url, lead_id, prompts, contact_email, contact_name } = body;
+    const {
+      business_name, business_type, location, target_url, lead_id,
+      prompts, contact_email, contact_name,
+      description, buyer_persona, buyer_jtbd, differentiators, competitors,
+    } = body;
 
     if (!business_name || !business_type || !prompts?.length) {
       return NextResponse.json(
@@ -21,7 +25,7 @@ export async function POST(request) {
 
     const supabase = createServerClient();
 
-    // Create the tracker client record
+    // Create the tracker client record with buyer profile
     const { data: client, error: clientError } = await supabase
       .from("tracker_clients")
       .insert({
@@ -31,6 +35,11 @@ export async function POST(request) {
         target_url: target_url || null,
         lead_id: lead_id || null,
         contact_email: contact_email || null,
+        description: description || null,
+        buyer_persona: buyer_persona || null,
+        buyer_jtbd: buyer_jtbd || null,
+        differentiators: differentiators || null,
+        competitors: competitors || null,
       })
       .select("id")
       .single();

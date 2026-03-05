@@ -13,6 +13,8 @@ export default function AdminSidebar() {
   const links = [
     { href: "/admin", label: "Leads", match: (p) => p === "/admin" },
     { href: "/admin/tracker", label: "AI Tracker", match: (p) => p.startsWith("/admin/tracker") },
+    { href: "/admin/compare", label: "Compare", match: (p) => p.startsWith("/admin/compare") },
+    { href: "/admin/costs", label: "API Costs", match: (p) => p.startsWith("/admin/costs") },
   ];
 
   async function handleLogout() {

@@ -1,7 +1,30 @@
 import { NextResponse } from "next/server";
-import { buildMonthlyReportData, buildReportEmailHtml } from "@/lib/tracker/report";
-import { sendMonthlyTrackerReport } from "@/lib/email";
+import { createServerClient } from "@/lib/supabase";
+import {
+  buildMonthlyReportData,
+  buildReportEmailHtml,
+  buildClientReportEmailHtml,
+} from "@/lib/tracker/report";
+import { sendMonthlyTrackerReport, sendClientMonthlyReport } from "@/lib/email";
 import { isAdminAuthed } from "@/lib/admin-auth";
+
+export const maxDuration = 60;
+
+/**
+ * Compute the previous month's date range.
+ */
+function getPreviousMonthRange() {
+  const now = new Date();
+  const firstOfThisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+  const lastMonth = new Date(firstOfThisMonth);
+  lastMonth.setDate(lastMonth.getDate() - 1);
+
+  const startDate = new Date(lastMonth.getFullYear(), lastMonth.getMonth(), 1)
+    .toISOString()
+    .split("T")[0];
+  const endDate = lastMonth.toISOString().split("T")[0];
+  return { startDate, endDate };
+}
 
 export async function GET(request) {
   if (!isAdminAuthed(request)) {
@@ -9,38 +32,58 @@ export async function GET(request) {
   }
 
   try {
-    // Default to previous calendar month
-    const now = new Date();
-    const firstOfThisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-    const lastMonth = new Date(firstOfThisMonth);
-    lastMonth.setDate(lastMonth.getDate() - 1);
-
-    const startDate = new Date(lastMonth.getFullYear(), lastMonth.getMonth(), 1)
-      .toISOString()
-      .split("T")[0];
-    const endDate = lastMonth.toISOString().split("T")[0];
-
+    const { startDate, endDate } = getPreviousMonthRange();
     const reportData = await buildMonthlyReportData(startDate, endDate);
-    const html = buildReportEmailHtml(reportData);
 
     const monthName = new Date(startDate).toLocaleDateString("en-US", {
       month: "long",
       year: "numeric",
     });
 
-    const result = await sendMonthlyTrackerReport(html, monthName);
+    // 1. Send admin summary email
+    const adminHtml = buildReportEmailHtml(reportData);
+    const adminResult = await sendMonthlyTrackerReport(adminHtml, monthName);
 
-    if (!result.success) {
-      return NextResponse.json(
-        { error: "Failed to send email", details: result.error },
-        { status: 500 }
-      );
+    // 2. Send per-client emails
+    const clientResults = [];
+    const supabase = createServerClient();
+
+    for (const clientData of reportData.clients) {
+      if (!clientData.contact_email) continue;
+      if (clientData.total_checks === 0) continue;
+
+      const clientHtml = buildClientReportEmailHtml(clientData, startDate, endDate);
+      const result = await sendClientMonthlyReport({
+        email: clientData.contact_email,
+        businessName: clientData.business_name,
+        htmlContent: clientHtml,
+        monthName,
+      });
+
+      // Log to generated_reports table
+      try {
+        await supabase.from("generated_reports").insert({
+          client_id: clientData.id,
+          report_type: "monthly",
+          period_start: startDate,
+          period_end: endDate,
+          sent_to: [clientData.contact_email],
+          sent_at: result.success ? new Date().toISOString() : null,
+        });
+      } catch { /* table may not exist yet */ }
+
+      clientResults.push({
+        client: clientData.business_name,
+        email: clientData.contact_email,
+        success: result.success,
+      });
     }
 
     return NextResponse.json({
       success: true,
       period: { startDate, endDate },
-      clients: reportData.clients.length,
+      admin_email: adminResult.success,
+      client_reports: clientResults,
     });
   } catch (err) {
     console.error("Send report error:", err);
@@ -56,7 +99,6 @@ export async function POST(request) {
   try {
     let startDate, endDate;
 
-    // Accept optional body with custom date range
     try {
       const body = await request.json();
       startDate = body.start_date;
@@ -65,40 +107,62 @@ export async function POST(request) {
       // No body or invalid JSON — use defaults
     }
 
-    // Default to previous calendar month
     if (!startDate || !endDate) {
-      const now = new Date();
-      const firstOfThisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-      const lastMonth = new Date(firstOfThisMonth);
-      lastMonth.setDate(lastMonth.getDate() - 1);
-
-      startDate = new Date(lastMonth.getFullYear(), lastMonth.getMonth(), 1)
-        .toISOString()
-        .split("T")[0];
-      endDate = lastMonth.toISOString().split("T")[0];
+      const range = getPreviousMonthRange();
+      startDate = range.startDate;
+      endDate = range.endDate;
     }
 
     const reportData = await buildMonthlyReportData(startDate, endDate);
-    const html = buildReportEmailHtml(reportData);
 
     const monthName = new Date(startDate).toLocaleDateString("en-US", {
       month: "long",
       year: "numeric",
     });
 
-    const result = await sendMonthlyTrackerReport(html, monthName);
+    // Send admin summary
+    const adminHtml = buildReportEmailHtml(reportData);
+    const adminResult = await sendMonthlyTrackerReport(adminHtml, monthName);
 
-    if (!result.success) {
-      return NextResponse.json(
-        { error: "Failed to send email", details: result.error },
-        { status: 500 }
-      );
+    // Send per-client emails
+    const clientResults = [];
+    const supabase = createServerClient();
+
+    for (const clientData of reportData.clients) {
+      if (!clientData.contact_email) continue;
+      if (clientData.total_checks === 0) continue;
+
+      const clientHtml = buildClientReportEmailHtml(clientData, startDate, endDate);
+      const result = await sendClientMonthlyReport({
+        email: clientData.contact_email,
+        businessName: clientData.business_name,
+        htmlContent: clientHtml,
+        monthName,
+      });
+
+      try {
+        await supabase.from("generated_reports").insert({
+          client_id: clientData.id,
+          report_type: "monthly",
+          period_start: startDate,
+          period_end: endDate,
+          sent_to: [clientData.contact_email],
+          sent_at: result.success ? new Date().toISOString() : null,
+        });
+      } catch { /* table may not exist yet */ }
+
+      clientResults.push({
+        client: clientData.business_name,
+        email: clientData.contact_email,
+        success: result.success,
+      });
     }
 
     return NextResponse.json({
       success: true,
       period: { startDate, endDate },
-      clients: reportData.clients.length,
+      admin_email: adminResult.success,
+      client_reports: clientResults,
     });
   } catch (err) {
     console.error("Send report error:", err);

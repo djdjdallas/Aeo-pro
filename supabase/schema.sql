@@ -126,3 +126,108 @@ CREATE TABLE IF NOT EXISTS service_tasks (
 );
 CREATE INDEX IF NOT EXISTS idx_service_tasks_client ON service_tasks (client_id);
 CREATE INDEX IF NOT EXISTS idx_service_tasks_status ON service_tasks (status);
+
+-- ============================================
+-- Production Upgrade: Pre-computed Aggregations
+-- ============================================
+
+-- Daily snapshots (eliminates raw query scanning for dashboards)
+CREATE TABLE IF NOT EXISTS daily_snapshots (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  client_id uuid REFERENCES tracker_clients(id) ON DELETE CASCADE,
+  snapshot_date date NOT NULL,
+  ai_model text NOT NULL,
+  total_checks int NOT NULL DEFAULT 0,
+  total_mentions int NOT NULL DEFAULT 0,
+  mention_rate numeric(5,2),
+  avg_mention_rank numeric(4,2),
+  position_quality_score numeric(5,2),
+  sentiment_positive int DEFAULT 0,
+  sentiment_neutral int DEFAULT 0,
+  sentiment_negative int DEFAULT 0,
+  sov_percentage numeric(5,2),
+  competitor_data jsonb DEFAULT '{}',
+  citation_count int DEFAULT 0,
+  client_citation_count int DEFAULT 0,
+  created_at timestamptz DEFAULT now(),
+  UNIQUE(client_id, snapshot_date, ai_model)
+);
+CREATE INDEX IF NOT EXISTS idx_daily_snapshots_lookup ON daily_snapshots (client_id, snapshot_date DESC);
+
+-- Monthly rollups for fast reporting
+CREATE TABLE IF NOT EXISTS monthly_snapshots (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  client_id uuid REFERENCES tracker_clients(id) ON DELETE CASCADE,
+  month_start date NOT NULL,
+  total_checks int NOT NULL DEFAULT 0,
+  total_mentions int NOT NULL DEFAULT 0,
+  mention_rate numeric(5,2),
+  mention_rate_ci_lower numeric(5,2),
+  mention_rate_ci_upper numeric(5,2),
+  position_quality_score numeric(5,2),
+  sov_percentage numeric(5,2),
+  aeo_composite_score numeric(5,2),
+  sentiment_positive int DEFAULT 0,
+  sentiment_neutral int DEFAULT 0,
+  sentiment_negative int DEFAULT 0,
+  model_breakdown jsonb DEFAULT '{}',
+  top_competitors jsonb DEFAULT '[]',
+  top_cited_domains jsonb DEFAULT '[]',
+  created_at timestamptz DEFAULT now(),
+  UNIQUE(client_id, month_start)
+);
+CREATE INDEX IF NOT EXISTS idx_monthly_snapshots_lookup ON monthly_snapshots (client_id, month_start DESC);
+
+-- Report generation history
+CREATE TABLE IF NOT EXISTS generated_reports (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  client_id uuid REFERENCES tracker_clients(id) ON DELETE CASCADE,
+  report_type text NOT NULL CHECK (report_type IN ('monthly', 'weekly', 'ad_hoc')),
+  period_start date NOT NULL,
+  period_end date NOT NULL,
+  pdf_storage_path text,
+  pdf_url text,
+  sent_to text[],
+  sent_at timestamptz,
+  created_at timestamptz DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_generated_reports_client ON generated_reports (client_id, created_at DESC);
+
+-- API cost tracking (know your margins)
+CREATE TABLE IF NOT EXISTS api_cost_log (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  client_id uuid REFERENCES tracker_clients(id) ON DELETE CASCADE,
+  ai_model text NOT NULL,
+  call_type text NOT NULL CHECK (call_type IN ('tracker', 'sentiment', 'prompt_gen', 'audit')),
+  input_tokens int,
+  output_tokens int,
+  estimated_cost numeric(10,6),
+  run_batch_id uuid,
+  created_at timestamptz DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_api_cost_month ON api_cost_log (client_id, created_at);
+
+-- ============================================
+-- Production Upgrade: Plan-based Config
+-- ============================================
+ALTER TABLE tracker_clients ADD COLUMN IF NOT EXISTS models_config jsonb;
+ALTER TABLE tracker_clients ADD COLUMN IF NOT EXISTS shots_per_prompt int DEFAULT 3;
+ALTER TABLE tracker_clients ADD COLUMN IF NOT EXISTS monthly_api_budget numeric(10,2);
+
+-- Shot timing and cost tracking on prompt_results
+ALTER TABLE prompt_results ADD COLUMN IF NOT EXISTS shot_window text;
+ALTER TABLE prompt_results ADD COLUMN IF NOT EXISTS api_cost_estimate numeric(10,6);
+
+-- ============================================
+-- Prompt Quality: Buyer Profile & JTBD Fields
+-- ============================================
+ALTER TABLE tracker_clients ADD COLUMN IF NOT EXISTS description text;
+ALTER TABLE tracker_clients ADD COLUMN IF NOT EXISTS buyer_persona text;
+ALTER TABLE tracker_clients ADD COLUMN IF NOT EXISTS buyer_jtbd text;
+ALTER TABLE tracker_clients ADD COLUMN IF NOT EXISTS differentiators text;
+ALTER TABLE tracker_clients ADD COLUMN IF NOT EXISTS competitors text;
+
+-- ============================================
+-- Tiered Archival: Track archival level
+-- ============================================
+ALTER TABLE prompt_results ADD COLUMN IF NOT EXISTS archival_tier text DEFAULT 'full' CHECK (archival_tier IN ('full', 'summary', 'aggregate'));

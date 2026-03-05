@@ -10,6 +10,11 @@ export default function NewTrackerClientForm() {
     location: "",
     target_url: "",
     differentiators: "",
+    // Buyer profile fields — these drive prompt quality
+    description: "",
+    buyer_persona: "",
+    buyer_jtbd: "",
+    competitors: "",
   });
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -95,7 +100,7 @@ export default function NewTrackerClientForm() {
           <h1 className="text-2xl font-bold">Add Tracker Client</h1>
           <p className="text-gray-400 text-sm mt-1">
             {!editablePrompts && !result
-              ? "Claude will auto-generate tracking prompts for this business."
+              ? "Fill in the buyer profile for higher-quality tracking prompts."
               : editablePrompts && !result
                 ? "Review and edit prompts before saving."
                 : "Client created successfully."}
@@ -112,7 +117,10 @@ export default function NewTrackerClientForm() {
       {/* Step 1: Business details form */}
       {!editablePrompts && !result && (
         <form onSubmit={handleGenerate} className="space-y-5">
+          {/* Core fields */}
           <div className="bg-[#111111] border border-[#1f1f1f] rounded-xl p-6 space-y-4">
+            <p className="text-xs text-gray-500 uppercase tracking-wider font-medium">Business Details</p>
+
             <div>
               <label className="text-xs text-gray-500 uppercase tracking-wider block mb-1.5">
                 Business Name *
@@ -140,52 +148,129 @@ export default function NewTrackerClientForm() {
                 className={inputClass}
               />
               <p className="text-xs text-gray-600 mt-1">
-                e.g. &quot;roofing company&quot;, &quot;personal injury law firm&quot;, &quot;dental office&quot;
+                e.g. &quot;roofing company&quot;, &quot;personal injury law firm&quot;, &quot;AI photo editing tool&quot;
+              </p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-xs text-gray-500 uppercase tracking-wider block mb-1.5">
+                  Location <span className="text-gray-600">(optional for SaaS)</span>
+                </label>
+                <input
+                  type="text"
+                  placeholder="Las Vegas, NV"
+                  value={form.location}
+                  onChange={(e) => setForm({ ...form, location: e.target.value })}
+                  className={inputClass}
+                />
+              </div>
+              <div>
+                <label className="text-xs text-gray-500 uppercase tracking-wider block mb-1.5">
+                  Target URL <span className="text-gray-600">(optional)</span>
+                </label>
+                <input
+                  type="url"
+                  placeholder="https://vegasproroofing.com"
+                  value={form.target_url}
+                  onChange={(e) => setForm({ ...form, target_url: e.target.value })}
+                  className={inputClass}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Buyer Profile — the key to prompt quality */}
+          <div className="bg-[#111111] border border-[#3b82f6]/20 rounded-xl p-6 space-y-4">
+            <div>
+              <p className="text-xs text-[#3b82f6] uppercase tracking-wider font-medium">Buyer Profile</p>
+              <p className="text-xs text-gray-600 mt-1">
+                These three fields determine prompt quality. The more specific, the better your tracking data.
               </p>
             </div>
 
             <div>
               <label className="text-xs text-gray-500 uppercase tracking-wider block mb-1.5">
-                Location <span className="text-gray-600">(optional for SaaS/agencies)</span>
+                What does this business do? <span className="text-gray-600">(one sentence)</span>
               </label>
               <input
                 type="text"
-                placeholder="Las Vegas, NV"
-                value={form.location}
-                onChange={(e) => setForm({ ...form, location: e.target.value })}
-                className={inputClass}
-              />
-            </div>
-
-            <div>
-              <label className="text-xs text-gray-500 uppercase tracking-wider block mb-1.5">
-                Target URL <span className="text-gray-600">(optional)</span>
-              </label>
-              <input
-                type="url"
-                placeholder="https://vegasproroofing.com"
-                value={form.target_url}
-                onChange={(e) => setForm({ ...form, target_url: e.target.value })}
+                placeholder="We replace and repair residential roofs across the Las Vegas valley with a lifetime warranty"
+                value={form.description}
+                onChange={(e) => setForm({ ...form, description: e.target.value })}
                 className={inputClass}
               />
               <p className="text-xs text-gray-600 mt-1">
-                Used to detect URL/domain citations in AI responses
+                Plain English from the owner, not marketing copy. What would they say at a BBQ?
               </p>
             </div>
 
             <div>
               <label className="text-xs text-gray-500 uppercase tracking-wider block mb-1.5">
-                Key Differentiators <span className="text-gray-600">(optional)</span>
+                Who is the actual buyer?
+              </label>
+              <input
+                type="text"
+                placeholder="Homeowner in Las Vegas whose roof is damaged or aging, usually after a monsoon or hailstorm"
+                value={form.buyer_persona}
+                onChange={(e) => setForm({ ...form, buyer_persona: e.target.value })}
+                className={inputClass}
+              />
+              <p className="text-xs text-gray-600 mt-1">
+                The person with the problem, not a business category. Be specific about their situation.
+              </p>
+            </div>
+
+            <div>
+              <label className="text-xs text-gray-500 uppercase tracking-wider block mb-1.5">
+                What problem triggers them to search?
               </label>
               <textarea
                 rows={2}
-                placeholder="voice DNA matching, retention optimization, PVSS framework"
+                placeholder="They just noticed a leak during a rainstorm, or their insurance company told them their roof needs replacing, or they're selling their house and the inspection flagged the roof"
+                value={form.buyer_jtbd}
+                onChange={(e) => setForm({ ...form, buyer_jtbd: e.target.value })}
+                className={`${inputClass} resize-none`}
+              />
+              <p className="text-xs text-gray-600 mt-1">
+                The &quot;job-to-be-done&quot; — what happened in their life right before they opened ChatGPT?
+              </p>
+            </div>
+          </div>
+
+          {/* Secondary fields */}
+          <div className="bg-[#111111] border border-[#1f1f1f] rounded-xl p-6 space-y-4">
+            <p className="text-xs text-gray-500 uppercase tracking-wider font-medium">Optional Context</p>
+
+            <div>
+              <label className="text-xs text-gray-500 uppercase tracking-wider block mb-1.5">
+                Key Differentiators
+              </label>
+              <textarea
+                rows={2}
+                placeholder="lifetime warranty, 24-hour emergency service, Tesla Solar Roof certified installer"
                 value={form.differentiators}
                 onChange={(e) => setForm({ ...form, differentiators: e.target.value })}
                 className={`${inputClass} resize-none`}
               />
               <p className="text-xs text-gray-600 mt-1">
-                What makes this business unique? Helps generate more targeted prompts.
+                What makes this business unique? Gets woven into tracking prompts.
+              </p>
+            </div>
+
+            <div>
+              <label className="text-xs text-gray-500 uppercase tracking-wider block mb-1.5">
+                Known Competitors
+              </label>
+              <input
+                type="text"
+                placeholder="First Quality Roofing, Prestige Roofing, Legacy Roofing"
+                value={form.competitors}
+                onChange={(e) => setForm({ ...form, competitors: e.target.value })}
+                className={inputClass}
+              />
+              <p className="text-xs text-gray-600 mt-1">
+                Names of competitors. Used in comparison prompts and SOV tracking.
               </p>
             </div>
           </div>
@@ -207,7 +292,7 @@ export default function NewTrackerClientForm() {
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                 </svg>
-                Generating prompts with Claude...
+                Generating buyer-intent prompts...
               </>
             ) : (
               "Generate Prompts"
@@ -326,7 +411,7 @@ export default function NewTrackerClientForm() {
               onClick={() => {
                 setResult(null);
                 setEditablePrompts(null);
-                setForm({ business_name: "", business_type: "", location: "", target_url: "", differentiators: "" });
+                setForm({ business_name: "", business_type: "", location: "", target_url: "", differentiators: "", description: "", buyer_persona: "", buyer_jtbd: "", competitors: "" });
               }}
               className="bg-[#1f1f1f] hover:bg-[#2a2a2a] text-gray-300 font-medium py-3 px-5 rounded-lg transition-colors text-sm"
             >

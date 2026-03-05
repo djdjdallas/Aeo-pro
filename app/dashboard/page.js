@@ -206,7 +206,7 @@ function DashboardView({ session, onLogout }) {
 
   if (!data) return null;
 
-  const { client, stats, sentiment, sov, citations, trend, prompts, recent_results } = data;
+  const { client, stats, sentiment, sov, citations, trend, prompts, recent_results, reports } = data;
   const mentionColor = stats.mention_rate >= 50 ? "text-green-400" : stats.mention_rate >= 20 ? "text-yellow-400" : "text-red-400";
 
   // Convert trend data into results format for TrendChart
@@ -325,6 +325,38 @@ function DashboardView({ session, onLogout }) {
             </div>
           )}
         </div>
+
+        {/* Reports Section */}
+        {reports?.length > 0 && (
+          <div className="bg-[#111111] border border-[#1f1f1f] rounded-xl p-5 mb-6">
+            <h3 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
+              <BarChart3 className="w-4 h-4 text-gray-500" />
+              Monthly Reports
+            </h3>
+            <div className="space-y-2">
+              {reports.map((report) => {
+                const start = new Date(report.period_start).toLocaleDateString("en-US", {
+                  month: "short",
+                  year: "numeric",
+                });
+                return (
+                  <div key={report.id} className="flex items-center justify-between py-2 border-b border-[#1f1f1f] last:border-0">
+                    <div>
+                      <span className="text-sm text-gray-300">{start}</span>
+                      <span className="text-xs text-gray-600 ml-2 capitalize">{report.report_type}</span>
+                    </div>
+                    <a
+                      href={`/api/tracker/report/${client.id}/pdf?start=${report.period_start}&end=${report.period_end}`}
+                      className="text-xs bg-[#1f1f1f] hover:bg-[#2a2a2a] text-[#3b82f6] px-3 py-1.5 rounded-lg transition-colors"
+                    >
+                      Download PDF
+                    </a>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {/* Tracked Prompts */}
         {prompts?.length > 0 && (

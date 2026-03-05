@@ -5,22 +5,82 @@ import { isAdminAuthed } from "@/lib/admin-auth";
 
 export const maxDuration = 120;
 
+/**
+ * GET /api/tracker/run?shot=1
+ *
+ * Fan-out orchestrator: fetches all active clients and dispatches
+ * per-client worker calls in parallel. Each worker runs in its own
+ * serverless invocation with its own timeout budget.
+ *
+ * Query params:
+ *   shot=1|2|3 — which shot window to run (from cron)
+ *   If no shot param, runs all shots sequentially (legacy/manual mode)
+ */
 export async function GET(request) {
   if (!isAdminAuthed(request)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   try {
+    const { searchParams } = new URL(request.url);
+    const shotParam = searchParams.get("shot");
+
     const supabase = createServerClient();
     const { data: allClients } = await supabase
       .from("tracker_clients")
-      .select("id");
+      .select("id, subscription_status")
+      .in("subscription_status", ["active", "trialing"]);
+
     const clientIds = allClients?.map((c) => c.id) || [];
 
+    if (clientIds.length === 0) {
+      return NextResponse.json({ success: true, summary: [], message: "No active clients" });
+    }
+
+    if (shotParam) {
+      // Fan-out mode: dispatch per-client workers in parallel
+      const shot = parseInt(shotParam, 10);
+      const shotWindows = { 1: "morning", 2: "afternoon", 3: "evening" };
+      const shotWindow = shotWindows[shot] || "morning";
+
+      const baseUrl = process.env.VERCEL_URL
+        ? `https://${process.env.VERCEL_URL}`
+        : process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+
+      const workerPromises = clientIds.map(async (clientId) => {
+        try {
+          const res = await fetch(`${baseUrl}/api/tracker/run-client`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${process.env.CRON_SECRET}`,
+            },
+            body: JSON.stringify({ client_id: clientId, shot, shot_window: shotWindow }),
+          });
+          const data = await res.json();
+          return { client_id: clientId, ...data };
+        } catch (err) {
+          console.error(`Worker dispatch failed for ${clientId}:`, err.message);
+          return { client_id: clientId, error: err.message };
+        }
+      });
+
+      const summary = await Promise.allSettled(workerPromises);
+      const results = summary.map((s) => s.status === "fulfilled" ? s.value : { error: s.reason?.message });
+
+      return NextResponse.json({ success: true, shot, summary: results });
+    }
+
+    // Legacy mode (no shot param): run all shots sequentially per client
     const summary = [];
     for (const id of clientIds) {
-      const result = await runTrackerForClient(id);
-      summary.push({ client_id: id, ...result });
+      try {
+        const result = await runTrackerForClient(id);
+        summary.push({ client_id: id, ...result });
+      } catch (err) {
+        console.error(`Tracker failed for ${id}:`, err.message);
+        summary.push({ client_id: id, error: err.message });
+      }
     }
 
     return NextResponse.json({ success: true, summary });
@@ -53,8 +113,13 @@ export async function POST(request) {
 
     const summary = [];
     for (const id of clientIds) {
-      const result = await runTrackerForClient(id);
-      summary.push({ client_id: id, ...result });
+      try {
+        const result = await runTrackerForClient(id);
+        summary.push({ client_id: id, ...result });
+      } catch (err) {
+        console.error(`Tracker failed for ${id}:`, err.message);
+        summary.push({ client_id: id, error: err.message });
+      }
     }
 
     return NextResponse.json({ success: true, summary });

@@ -65,7 +65,7 @@ export default function Navbar() {
             onClick={() => openModal()}
             className="cta-glow bg-[#3b82f6] hover:bg-[#2563eb] text-white text-sm font-medium px-5 py-2 rounded-lg transition-all"
           >
-            Get Free Audit
+            Get Your Free Audit
           </button>
         </div>
 
@@ -106,7 +106,7 @@ export default function Navbar() {
               openModal();
             }}
           >
-            Get Free Audit
+            Get Your Free Audit
           </button>
         </div>
       )}

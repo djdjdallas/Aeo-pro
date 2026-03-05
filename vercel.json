@@ -1,12 +1,28 @@
 {
   "crons": [
     {
-      "path": "/api/tracker/run",
-      "schedule": "0 8 * * *"
+      "path": "/api/tracker/run?shot=1",
+      "schedule": "0 6 * * *"
+    },
+    {
+      "path": "/api/tracker/run?shot=2",
+      "schedule": "0 14 * * *"
+    },
+    {
+      "path": "/api/tracker/run?shot=3",
+      "schedule": "0 22 * * *"
     },
     {
       "path": "/api/tracker/alerts",
       "schedule": "0 10 * * *"
+    },
+    {
+      "path": "/api/tracker/aggregate",
+      "schedule": "30 23 * * *"
+    },
+    {
+      "path": "/api/tracker/monthly-rollup",
+      "schedule": "0 8 1 * *"
     },
     {
       "path": "/api/tracker/send-report",

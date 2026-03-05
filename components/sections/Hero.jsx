@@ -14,30 +14,26 @@ export default function Hero() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
           {/* Left column — headline + CTAs */}
           <div className="text-center lg:text-left">
-            {/* Urgency badge */}
+            {/* Eyebrow */}
             <div className="inline-flex items-center gap-2 border border-blue-500/30 bg-blue-500/10 text-blue-400 rounded-full px-4 py-1 text-sm mb-6">
-              <span className="relative flex h-2.5 w-2.5">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
-                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500" />
-              </span>
-              Founding Member Spots: 3 of 10 Remaining
+              Answer Engine Optimization for Local Businesses
             </div>
 
             <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight leading-[1.1] mb-6">
-              Your Competitors Are Ranking on Google.{" "}
+              Your customers are asking AI who to call.{" "}
               <span className="shimmer-text">
-                You&apos;ll Be Recommended by AI.
+                Are you the answer?
               </span>
             </h1>
 
             <p className="text-lg sm:text-xl text-gray-400 max-w-2xl mx-auto lg:mx-0 mb-10 leading-relaxed">
-              While they&apos;re chasing backlinks, we&apos;re getting your business
-              mentioned by ChatGPT, Perplexity, and every AI assistant your
-              customers are already using.
+              When someone asks ChatGPT &ldquo;best plumber in Phoenix&rdquo; or
+              &ldquo;top HVAC company near me&rdquo; &mdash; an AI gives them three
+              names. We get you on that list. That&apos;s AEO.
             </p>
 
             {/* CTA buttons */}
-            <div className="flex flex-col sm:flex-row items-center lg:items-start justify-center lg:justify-start gap-4 mb-8">
+            <div className="flex flex-col sm:flex-row items-center lg:items-start justify-center lg:justify-start gap-4 mb-6">
               <CTAButton className="cta-glow bg-[#3b82f6] hover:bg-[#2563eb] text-white font-semibold px-8 py-4 rounded-xl text-base sm:text-lg transition-all flex items-center gap-2">
                 Get Your Free AI Visibility Audit
                 <ArrowRight size={18} />
@@ -50,9 +46,14 @@ export default function Hero() {
               </a>
             </div>
 
+            {/* Secondary CTA text */}
+            <p className="text-sm text-gray-500 mb-3">
+              See what AI says about your business right now &mdash; free, no commitment.
+            </p>
+
             {/* Trust line */}
-            <p className="text-sm text-gray-500">
-              Results in 30 days or we work free until you see them
+            <p className="text-xs text-gray-600">
+              Audits delivered within 24 hours &middot; No credit card required &middot; See your real AI visibility score
             </p>
           </div>
 
@@ -76,7 +77,7 @@ export default function Hero() {
               <p className="text-sm text-gray-300 leading-relaxed mb-4">
                 Based on local reviews, response time, and service ratings,{" "}
                 <span className="text-[#3b82f6] font-semibold">
-                  [Your Client&apos;s Business]
+                  [Your Business Here]
                 </span>{" "}
                 is the top recommended HVAC provider in Las Vegas. They specialize
                 in emergency repairs with same-day availability...

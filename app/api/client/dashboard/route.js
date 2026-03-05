@@ -128,6 +128,18 @@ export async function GET(request) {
       .eq("client_id", clientId)
       .eq("is_active", true);
 
+    // Available reports
+    let reports = [];
+    try {
+      const { data: reportData } = await supabase
+        .from("generated_reports")
+        .select("id, report_type, period_start, period_end, pdf_url, created_at")
+        .eq("client_id", clientId)
+        .order("created_at", { ascending: false })
+        .limit(12);
+      reports = reportData || [];
+    } catch { /* table may not exist */ }
+
     return NextResponse.json({
       client,
       stats: { total_checks: totalChecks, total_mentions: totalMentions, mention_rate: mentionRate },
@@ -137,6 +149,7 @@ export async function GET(request) {
       trend,
       prompts: prompts || [],
       recent_results: (results || []).slice(0, 50),
+      reports,
     });
   } catch (err) {
     console.error("Client dashboard error:", err);

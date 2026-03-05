@@ -1,12 +1,10 @@
-import Navbar from "@/components/sections/Navbar";
-import Hero from "@/components/sections/Hero";
-import SocialProof from "@/components/sections/SocialProof";
-import Problem from "@/components/sections/Problem";
-import HowItWorks from "@/components/sections/HowItWorks";
-import AboutAEO from "@/components/sections/AboutAEO";
-import ResultsSnapshot from "@/components/sections/ResultsSnapshot";
-import Timeline from "@/components/sections/Timeline";
+import DashboardHero from "@/components/sections/DashboardHero";
+import TrustBar from "@/components/sections/TrustBar";
+import WhatsChanging from "@/components/sections/WhatsChanging";
 import WhoItsFor from "@/components/sections/WhoItsFor";
+import HowItWorks from "@/components/sections/HowItWorks";
+import MonitoringDifference from "@/components/sections/MonitoringDifference";
+import MidPageCTA from "@/components/sections/MidPageCTA";
 import Pricing from "@/components/sections/Pricing";
 import FAQ from "@/components/sections/FAQ";
 import FinalCTA from "@/components/sections/FinalCTA";
@@ -21,7 +19,7 @@ import { homepageFaqs, pricingPlans } from "@/lib/homepage-data";
 const serviceJsonLd = generateServiceJsonLd({
   name: "Answer Engine Optimization (AEO)",
   description:
-    "Get your local business recommended by ChatGPT, Perplexity, and every AI assistant your customers use.",
+    "Done-for-you AEO for local businesses. We get you recommended by ChatGPT, Perplexity, and every AI assistant your customers use.",
   offers: pricingPlans,
 });
 
@@ -44,16 +42,14 @@ export default function Home() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
       />
-      <Navbar />
+      <DashboardHero />
       <main>
-        <Hero />
-        <SocialProof />
-        <Problem />
-        <HowItWorks />
-        <AboutAEO />
-        <ResultsSnapshot />
-        <Timeline />
+        <TrustBar />
+        <WhatsChanging />
         <WhoItsFor />
+        <HowItWorks />
+        <MonitoringDifference />
+        <MidPageCTA />
         <Pricing />
         <FAQ />
         <FinalCTA />
