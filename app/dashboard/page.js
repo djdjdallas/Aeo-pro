@@ -206,7 +206,7 @@ function DashboardView({ session, onLogout }) {
 
   if (!data) return null;
 
-  const { client, stats, sentiment, sov, citations, trend, prompts, recent_results, reports } = data;
+  const { client, stats, scoreReliability, sentiment, sov, citations, trend, prompts, recent_results, reports } = data;
   const mentionColor = stats.mention_rate >= 50 ? "text-green-400" : stats.mention_rate >= 20 ? "text-yellow-400" : "text-red-400";
 
   // Convert trend data into results format for TrendChart
@@ -239,6 +239,34 @@ function DashboardView({ session, onLogout }) {
             Sign Out
           </button>
         </div>
+
+        {/* Data Collection Progress Banner */}
+        {scoreReliability && !scoreReliability.isReliable && (
+          <div className="bg-[#111827] border border-[#1e3a5f] rounded-xl p-4 mb-6">
+            <div className="flex items-start gap-3">
+              <div className="mt-0.5 w-5 h-5 rounded-full bg-[#3b82f6]/20 flex items-center justify-center flex-shrink-0">
+                <BarChart3 className="w-3 h-3 text-[#3b82f6]" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm text-gray-200">
+                  We&apos;re collecting your baseline data — <span className="text-white font-medium">{scoreReliability.checksNeeded} more check{scoreReliability.checksNeeded === 1 ? "" : "s"}</span> needed for reliable scores.
+                  Your current figures will stabilize over the next few days.
+                </p>
+                <div className="mt-3 flex items-center gap-3">
+                  <div className="flex-1 h-1.5 bg-[#1f1f1f] rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-[#3b82f6] rounded-full transition-all duration-500"
+                      style={{ width: `${scoreReliability.progressPercent}%` }}
+                    />
+                  </div>
+                  <span className="text-xs text-gray-500 tabular-nums flex-shrink-0">
+                    {scoreReliability.checksCompleted}/{scoreReliability.checksCompleted + scoreReliability.checksNeeded}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Stats Grid */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">

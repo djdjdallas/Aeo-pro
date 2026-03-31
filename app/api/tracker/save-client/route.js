@@ -14,6 +14,7 @@ export async function POST(request) {
       business_name, business_type, location, target_url, lead_id,
       prompts, contact_email, contact_name,
       description, buyer_persona, buyer_jtbd, differentiators, competitors,
+      name_aliases,
     } = body;
 
     if (!business_name || !business_type || !prompts?.length) {
@@ -40,6 +41,7 @@ export async function POST(request) {
         buyer_jtbd: buyer_jtbd || null,
         differentiators: differentiators || null,
         competitors: competitors || null,
+        name_aliases: Array.isArray(name_aliases) ? name_aliases.filter(Boolean) : [],
       })
       .select("id")
       .single();

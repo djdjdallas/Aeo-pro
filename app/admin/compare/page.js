@@ -40,7 +40,7 @@ export default async function CompareClientsPage() {
   // Also fetch raw stats for clients without snapshots
   const { data: rawResults } = await supabase
     .from("prompt_results")
-    .select("client_id, was_mentioned, mention_rank, sentiment, checked_at")
+    .select("client_id, was_mentioned, mention_rank, sentiment, checked_at, response_status")
     .gte("checked_at", new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString());
 
   // SOV data
@@ -68,8 +68,8 @@ export default async function CompareClientsPage() {
       };
     }
 
-    // Fallback to raw results
-    const clientResults = (rawResults || []).filter((r) => r.client_id === client.id);
+    // Fallback to raw results — exclude invalid responses
+    const clientResults = (rawResults || []).filter((r) => r.client_id === client.id && (!r.response_status || r.response_status === "valid"));
     const total = clientResults.length;
     const mentioned = clientResults.filter((r) => r.was_mentioned).length;
     const rate = total > 0 ? Math.round((mentioned / total) * 100) : null;

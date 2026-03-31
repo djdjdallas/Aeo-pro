@@ -21,11 +21,20 @@ export async function GET(request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  try {
-    const { searchParams } = new URL(request.url);
-    const shotParam = searchParams.get("shot");
+  const supabase = createServerClient();
+  const { searchParams } = new URL(request.url);
+  const shotParam = searchParams.get("shot");
+  const jobName = shotParam ? `tracker-shot-${shotParam}` : "tracker-legacy";
 
-    const supabase = createServerClient();
+  // Log cron start
+  const { data: cronLog } = await supabase
+    .from("cron_run_log")
+    .insert({ job_name: jobName, status: "running" })
+    .select("id")
+    .single();
+  const cronLogId = cronLog?.id;
+
+  try {
     const { data: allClients } = await supabase
       .from("tracker_clients")
       .select("id, subscription_status")
@@ -34,6 +43,11 @@ export async function GET(request) {
     const clientIds = allClients?.map((c) => c.id) || [];
 
     if (clientIds.length === 0) {
+      if (cronLogId) {
+        await supabase.from("cron_run_log").update({
+          status: "success", completed_at: new Date().toISOString(), clients_processed: 0,
+        }).eq("id", cronLogId);
+      }
       return NextResponse.json({ success: true, summary: [], message: "No active clients" });
     }
 
@@ -68,6 +82,12 @@ export async function GET(request) {
       const summary = await Promise.allSettled(workerPromises);
       const results = summary.map((s) => s.status === "fulfilled" ? s.value : { error: s.reason?.message });
 
+      if (cronLogId) {
+        await supabase.from("cron_run_log").update({
+          status: "success", completed_at: new Date().toISOString(), clients_processed: clientIds.length,
+        }).eq("id", cronLogId);
+      }
+
       return NextResponse.json({ success: true, shot, summary: results });
     }
 
@@ -83,9 +103,20 @@ export async function GET(request) {
       }
     }
 
+    if (cronLogId) {
+      await supabase.from("cron_run_log").update({
+        status: "success", completed_at: new Date().toISOString(), clients_processed: clientIds.length,
+      }).eq("id", cronLogId);
+    }
+
     return NextResponse.json({ success: true, summary });
   } catch (err) {
     console.error("Run tracker error:", err);
+    if (cronLogId) {
+      await supabase.from("cron_run_log").update({
+        status: "failed", completed_at: new Date().toISOString(), error_message: err.message,
+      }).eq("id", cronLogId).catch(() => {});
+    }
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

@@ -20,8 +20,17 @@ export async function GET(request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const supabase = createServerClient();
+
+  // Log cron start
+  const { data: cronLog } = await supabase
+    .from("cron_run_log")
+    .insert({ job_name: "aggregate", status: "running" })
+    .select("id")
+    .single();
+  const cronLogId = cronLog?.id;
+
   try {
-    const supabase = createServerClient();
     const today = new Date().toISOString().split("T")[0];
 
     const { data: clients } = await supabase
@@ -29,6 +38,11 @@ export async function GET(request) {
       .select("id, business_name");
 
     if (!clients?.length) {
+      if (cronLogId) {
+        await supabase.from("cron_run_log").update({
+          status: "success", completed_at: new Date().toISOString(), clients_processed: 0,
+        }).eq("id", cronLogId);
+      }
       return NextResponse.json({ success: true, message: "No clients" });
     }
 
@@ -36,14 +50,16 @@ export async function GET(request) {
 
     for (const client of clients) {
       // Get today's results for this client
-      const { data: results } = await supabase
+      const { data: rawResults } = await supabase
         .from("prompt_results")
-        .select("ai_model, was_mentioned, mention_rank, sentiment")
+        .select("ai_model, was_mentioned, mention_rank, sentiment, response_status")
         .eq("client_id", client.id)
         .gte("checked_at", `${today}T00:00:00Z`)
         .lte("checked_at", `${today}T23:59:59Z`);
 
-      if (!results?.length) continue;
+      // Exclude invalid responses from aggregation
+      const results = (rawResults || []).filter((r) => !r.response_status || r.response_status === "valid");
+      if (!results.length) continue;
 
       // Group by model
       const byModel = {};
@@ -145,6 +161,12 @@ export async function GET(request) {
       }
     }
 
+    if (cronLogId) {
+      await supabase.from("cron_run_log").update({
+        status: "success", completed_at: new Date().toISOString(), clients_processed: clients.length,
+      }).eq("id", cronLogId);
+    }
+
     return NextResponse.json({
       success: true,
       date: today,
@@ -153,6 +175,11 @@ export async function GET(request) {
     });
   } catch (err) {
     console.error("Aggregate error:", err);
+    if (cronLogId) {
+      await supabase.from("cron_run_log").update({
+        status: "failed", completed_at: new Date().toISOString(), error_message: err.message,
+      }).eq("id", cronLogId).catch(() => {});
+    }
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }

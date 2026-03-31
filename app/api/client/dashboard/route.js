@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase";
 import { createAuthClient } from "@/lib/client-auth";
 import { buildTrendData } from "@/lib/tracker/trends";
+import { getDataCollectionProgress } from "@/lib/tracker/metrics";
 
 /**
  * GET /api/client/dashboard — Returns all dashboard data for the authenticated client
@@ -58,9 +59,10 @@ export async function GET(request) {
       .order("checked_at", { ascending: false })
       .limit(500);
 
-    // Compute stats
-    const totalChecks = results?.length || 0;
-    const totalMentions = results?.filter((r) => r.was_mentioned).length || 0;
+    // Compute stats — exclude invalid responses (refusals, empty) from scoring
+    const validResults = (results || []).filter((r) => !r.response_status || r.response_status === "valid");
+    const totalChecks = validResults.length;
+    const totalMentions = validResults.filter((r) => r.was_mentioned).length;
     const mentionRate = totalChecks > 0 ? Math.round((totalMentions / totalChecks) * 100) : 0;
 
     // Sentiment
@@ -140,9 +142,12 @@ export async function GET(request) {
       reports = reportData || [];
     } catch { /* table may not exist */ }
 
+    const scoreReliability = getDataCollectionProgress(totalChecks);
+
     return NextResponse.json({
       client,
       stats: { total_checks: totalChecks, total_mentions: totalMentions, mention_rate: mentionRate },
+      scoreReliability,
       sentiment,
       sov,
       citations,

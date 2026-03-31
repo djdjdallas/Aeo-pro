@@ -56,13 +56,14 @@ export async function POST(request) {
     // Calculate per-prompt performance
     const promptPerformance = [];
     for (const prompt of prompts) {
-      const { data: results } = await supabase
+      const { data: rawResults } = await supabase
         .from("prompt_results")
-        .select("was_mentioned, checked_at")
+        .select("was_mentioned, checked_at, response_status")
         .eq("prompt_id", prompt.id);
 
-      const total = results?.length || 0;
-      const mentioned = results?.filter((r) => r.was_mentioned).length || 0;
+      const results = (rawResults || []).filter((r) => !r.response_status || r.response_status === "valid");
+      const total = results.length;
+      const mentioned = results.filter((r) => r.was_mentioned).length;
       const rate = total > 0 ? Math.round((mentioned / total) * 100) : null;
 
       // Check age

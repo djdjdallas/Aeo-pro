@@ -231,3 +231,33 @@ ALTER TABLE tracker_clients ADD COLUMN IF NOT EXISTS competitors text;
 -- Tiered Archival: Track archival level
 -- ============================================
 ALTER TABLE prompt_results ADD COLUMN IF NOT EXISTS archival_tier text DEFAULT 'full' CHECK (archival_tier IN ('full', 'summary', 'aggregate'));
+
+-- ============================================
+-- Grounding Type: Track whether model used live web data or training data
+-- ============================================
+ALTER TABLE prompt_results ADD COLUMN IF NOT EXISTS grounding_type text DEFAULT 'unknown';
+
+-- ============================================
+-- Response Validation: Track whether AI response was usable for scoring
+-- ============================================
+ALTER TABLE prompt_results ADD COLUMN IF NOT EXISTS response_status text DEFAULT 'valid';
+
+-- ============================================
+-- Name Aliases: Alternative names for fuzzy mention matching
+-- ============================================
+ALTER TABLE tracker_clients ADD COLUMN IF NOT EXISTS name_aliases text[] DEFAULT '{}';
+
+-- ============================================
+-- Cron Health Monitoring
+-- ============================================
+CREATE TABLE IF NOT EXISTS cron_run_log (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  job_name text NOT NULL,
+  started_at timestamptz DEFAULT now(),
+  completed_at timestamptz,
+  status text DEFAULT 'running' CHECK (status IN ('running', 'success', 'failed')),
+  clients_processed int DEFAULT 0,
+  error_message text,
+  created_at timestamptz DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_cron_run_log_job ON cron_run_log (job_name, started_at DESC);

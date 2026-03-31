@@ -19,20 +19,16 @@ export async function GET(request, { params }) {
     const { clientId } = await params;
     const { searchParams } = new URL(request.url);
 
-    // Default to previous month
+    // Default to current month (1st through today)
     let startDate = searchParams.get("start");
     let endDate = searchParams.get("end");
 
     if (!startDate || !endDate) {
       const now = new Date();
-      const firstOfThisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-      const lastMonth = new Date(firstOfThisMonth);
-      lastMonth.setDate(lastMonth.getDate() - 1);
-
-      startDate = new Date(lastMonth.getFullYear(), lastMonth.getMonth(), 1)
+      startDate = new Date(now.getFullYear(), now.getMonth(), 1)
         .toISOString()
         .split("T")[0];
-      endDate = lastMonth.toISOString().split("T")[0];
+      endDate = now.toISOString().split("T")[0];
     }
 
     const reportData = await buildMonthlyReportData(startDate, endDate);

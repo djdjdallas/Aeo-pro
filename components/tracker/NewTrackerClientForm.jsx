@@ -15,6 +15,7 @@ export default function NewTrackerClientForm() {
     buyer_persona: "",
     buyer_jtbd: "",
     competitors: "",
+    name_aliases: "",
   });
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -58,11 +59,16 @@ export default function NewTrackerClientForm() {
     setError(null);
 
     try {
+      const aliasArray = form.name_aliases
+        ? form.name_aliases.split(",").map((s) => s.trim()).filter(Boolean)
+        : [];
+
       const res = await fetch("/api/tracker/save-client", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...form,
+          name_aliases: aliasArray,
           prompts: validPrompts,
         }),
       });
@@ -273,6 +279,22 @@ export default function NewTrackerClientForm() {
                 Names of competitors. Used in comparison prompts and SOV tracking.
               </p>
             </div>
+
+            <div>
+              <label className="text-xs text-gray-500 uppercase tracking-wider block mb-1.5">
+                Name Aliases
+              </label>
+              <input
+                type="text"
+                placeholder="VPR, Vegas Pro, vegasproroofing.com"
+                value={form.name_aliases}
+                onChange={(e) => setForm({ ...form, name_aliases: e.target.value })}
+                className={inputClass}
+              />
+              <p className="text-xs text-gray-600 mt-1">
+                Alternative names, abbreviations, or domains that AI might use to refer to this business. Comma-separated.
+              </p>
+            </div>
           </div>
 
           {error && (
@@ -411,7 +433,7 @@ export default function NewTrackerClientForm() {
               onClick={() => {
                 setResult(null);
                 setEditablePrompts(null);
-                setForm({ business_name: "", business_type: "", location: "", target_url: "", differentiators: "", description: "", buyer_persona: "", buyer_jtbd: "", competitors: "" });
+                setForm({ business_name: "", business_type: "", location: "", target_url: "", differentiators: "", description: "", buyer_persona: "", buyer_jtbd: "", competitors: "", name_aliases: "" });
               }}
               className="bg-[#1f1f1f] hover:bg-[#2a2a2a] text-gray-300 font-medium py-3 px-5 rounded-lg transition-colors text-sm"
             >

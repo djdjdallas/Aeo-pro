@@ -6,6 +6,7 @@ import TrackerResultsTable from "@/components/tracker/TrackerResultsTable";
 import EditablePromptsList from "@/components/tracker/EditablePromptsList";
 import TrendChart from "@/components/tracker/TrendChart";
 import ServiceTasksList from "@/components/tracker/ServiceTasksList";
+import NameAliasesEditor from "@/components/tracker/NameAliasesEditor";
 import { mentionRateWithCI, positionQualityScore, aeoCompositeScore, shareOfVoice } from "@/lib/tracker/metrics";
 
 export const dynamic = "force-dynamic";
@@ -47,15 +48,17 @@ export default async function TrackerClientPage({ params }) {
     .eq("client_id", clientId)
     .eq("is_active", true);
 
-  const totalChecks = results?.length || 0;
-  const totalMentions = results?.filter((r) => r.was_mentioned).length || 0;
+  // Exclude invalid responses from scoring
+  const validResults = (results || []).filter((r) => !r.response_status || r.response_status === "valid");
+  const totalChecks = validResults.length;
+  const totalMentions = validResults.filter((r) => r.was_mentioned).length;
   const lastChecked = results?.[0]?.checked_at || null;
 
   // Wilson confidence interval
   const { rate: mentionRate, lower: ciLower, upper: ciUpper } = mentionRateWithCI(totalMentions, totalChecks);
 
   // Position quality score
-  const mentionedWithRank = (results || []).filter((r) => r.was_mentioned && r.mention_rank);
+  const mentionedWithRank = validResults.filter((r) => r.was_mentioned && r.mention_rank);
   const pqs = positionQualityScore(mentionedWithRank);
 
   // Confidence from latest batch
@@ -327,6 +330,9 @@ export default async function TrackerClientPage({ params }) {
 
       {/* Trend Chart */}
       <TrendChart results={results || []} />
+
+      {/* Name Aliases for fuzzy matching */}
+      <NameAliasesEditor clientId={clientId} initialAliases={client.name_aliases || []} />
 
       {/* Service Delivery Tasks */}
       <ServiceTasksList clientId={clientId} plan={client.plan} />

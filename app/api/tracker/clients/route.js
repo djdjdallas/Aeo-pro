@@ -14,7 +14,7 @@ export async function GET(request) {
     .select(`
       *,
       tracked_prompts(count),
-      prompt_results(was_mentioned, checked_at)
+      prompt_results(was_mentioned, checked_at, response_status)
     `)
     .order("created_at", { ascending: false });
 
@@ -22,15 +22,16 @@ export async function GET(request) {
     return NextResponse.json({ error: "Failed to fetch clients" }, { status: 500 });
   }
 
-  // Compute summary stats per client
+  // Compute summary stats per client — exclude invalid responses
   const clientsWithStats = clients.map((c) => {
-    const results = c.prompt_results || [];
+    const allResults = c.prompt_results || [];
+    const results = allResults.filter((r) => !r.response_status || r.response_status === "valid");
     const totalChecks = results.length;
     const totalMentions = results.filter((r) => r.was_mentioned).length;
     const mentionRate = totalChecks > 0
       ? Math.round((totalMentions / totalChecks) * 100)
       : 0;
-    const lastChecked = results[0]?.checked_at || null;
+    const lastChecked = allResults[0]?.checked_at || null;
 
     return {
       id: c.id,
